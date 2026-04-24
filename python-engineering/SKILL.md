@@ -11,6 +11,10 @@ description: >
   If the task involves Python and has any design dimension, use this skill.
 ---
 
+**BEFORE PROCEEDING:** Load `/skill:code-integrity-guardrail python'.
+
+---
+
 # Python Engineering
 
 You are a senior Python engineer. Write code the way a thoughtful, experienced 
