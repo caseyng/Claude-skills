@@ -1,7 +1,32 @@
-```
+---
+name: session-handoff
+description: >
+  Manages context continuity across Claude sessions. Use this skill in TWO situations:
+  (1) GENERATING a handoff — when context is filling up, when the user asks for a handoff,
+  or proactively before starting something large that may exhaust the context window.
+  Trigger phrases: "handoff", "new window", "context is full", "start fresh", or when
+  Claude detects the conversation is nearing its limit.
+  (2) RECEIVING a handoff — when a new session opens and the user pastes a handoff document.
+  Trigger: user pastes a structured document that looks like a session handoff at the start
+  of a conversation.
+---
+
 # Session Handoff Skill
 
 Two modes. Read the situation and apply the correct one.
+
+---
+
+## Mode 0: During a Session
+
+Do not wait until handoff generation to identify what matters. Capture as it happens:
+
+- **Decision made** → note the decision and why, not just what
+- **User correction** → note what Claude got wrong and the correct model immediately
+- **Approach rejected** → note what was tried and why it failed
+- **Constraint established** → note it as hard or soft at the point it's set
+
+This makes generation fast and accurate. Handoffs reconstructed from memory at session end are lossy. Handoffs assembled from live captures are not.
 
 ---
 
@@ -25,8 +50,11 @@ Write the handoff **for Claude, not a human.** Maximise information density.
 - Drop all prose filler and transitional language
 - Abbreviate freely where intent is unambiguous
 - Bullet and nested structure over sentences
-- The only test: would a new Claude session fully reconstruct context AND reasoning from this?
 - Omit any section where the content would be "none" or "not applicable"
+
+**The cut test** — before including any section, ask: would removing this cause a new session to reason differently or make a different decision? Yes → keep. No → cut. This is an attention rule, not just a size rule. Every section that survives competes for the same context window. Sections that don't earn their place crowd out sections that do.
+
+**The only inclusion test:** would a new Claude session fully reconstruct context AND reasoning from this?
 
 ### The core problem with state-only handoffs
 
@@ -69,10 +97,17 @@ Adapt to the actual work. Only include sections that earn their place.
 #  This line influences the new session name.]
 
 ## WHAT THIS IS
-[Purpose + end goal. 1-3 lines max.]
+[Purpose + end goal + exit condition. 1-3 lines max.
+Exit condition: what state the world is in when this work is complete.]
 
 ## WHERE WE ARE
-[Current state. What exists. What works. What doesn't. Specific.]
+[Current state. What exists. What works. What doesn't. Specific.
+For sequential work: current phase, next decision point, what's blocking.]
+
+## CONSTRAINTS
+[Must never / must always / must not change. Technical + style + process.
+Mark each: HARD (never violated) or SOFT (default, overridable with explicit rationale).
+Only rank or annotate constraints when two or more are known to be in tension.]
 
 ## DECISIONS MADE
 [decision → why → tradeoffs accepted]
@@ -96,14 +131,14 @@ Priority order:
 - SHOULD: [soon]
 - DEBT: [deferred, known]
 
-## CONSTRAINTS
-[Must never / must always / must not change. Technical + style + process.]
-
 ## OPEN QUESTIONS
 [Unresolved. Who decides. Options if known.]
 
 ## CONTEXT NEW SESSION CANNOT INFER
-[Background, preferences, mental model, framing, relationships between things.]
+[Background, preferences, mental model, framing, relationships between things.
+Include working relationship state only if it would change how the new session engages —
+established trust, known sensitivities, communication rhythm. Cut this line if the work
+is purely technical and rapport context would not change any decision.]
 
 ## ARTIFACTS
 [Files, documents, code produced. Name → location → current state.]
@@ -147,4 +182,3 @@ Ready when you are — paste any files or context you want me to load first.
 Do not ask clarifying questions at this stage. The handoff should be sufficient.
 If something is genuinely missing, note it in the confirmation — do not ask a
 series of questions.
-```
