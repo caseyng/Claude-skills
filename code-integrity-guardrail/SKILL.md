@@ -1,44 +1,68 @@
 ---
 name: code-integrity-guardrail
-description: >
-  Universal anti-slop verification system for AI-generated code. Defines the slop
-  taxonomy, mandatory verification protocol, pressure response framework, and
-  behavioral failure mode defenses. Compose with language-specific skills that
-  provide concrete bindings. Invoke this skill whenever writing, reviewing, or
-  refactoring code in any language.
-version: 1.1.0
-date: 2026-04-24
+version: 1.2.2
 ---
 
 # Code Integrity Guardrail
 
-This skill is the single source of truth for AI code quality enforcement.
-Language-specific bindings live in `references/bindings/<language>.md` within this skill.
+Universal anti-slop verification system for AI-generated code. Language-specific
+bindings live in `references/bindings/<language>.md`.
 
-**How to use:** Language skills invoke `/skill:code-integrity-guardrail <language>`.
-The guardrail loads `references/bindings/<language>.md` for the declared language.
-If no language is passed, list available bindings and ask.
+Bindings must not restate universal rules. A binding entry is added only when
+language-specific syntax, tooling, or behavior requires it. If the universal rule
+is sufficient, the binding is silent on that topic.
+
+---
+
+## Step 0: Calibrate Scope
+
+Before applying any rules, determine the code's context. Rules that cannot be
+relaxed are marked **fixed**. All others may be relaxed per the table below.
+
+| Context | Description | What may be relaxed |
+|---|---|---|
+| **Script** | Personal, single-use, no external input | `__repr__`, formal logging (`print` acceptable), docstrings, ABCs, registry pattern |
+| **Prototype** | Demo or throwaway, no production data | Architecture patterns (DI, registry), `__repr__`, test coverage |
+| **Internal utility** | Team-facing, controlled input, not customer-facing | Formal resilience patterns, full test coverage on happy path |
+| **Shared library** | Imported by other code, indirectly customer-facing | Nothing |
+| **Production service** | Customer-facing or data-touching | Nothing |
+
+Prototypes must carry a header comment:
+
+```
+# PROTOTYPE — not for production use
+# Missing: [list what is absent]
+# Do not deploy without full review
+```
+
+Scripts may use `print()` for output only if the file carries:
+
+```
+# SCRIPT-NOT-A-LIBRARY
+```
+
+**Fixed regardless of context:** secrets management, injection prevention,
+`eval()`/`exec()` on any input, TLS verification, explicit encoding on file
+operations, resource cleanup.
 
 ---
 
 ## Core Assumption
 
-AI systematically produces code that appears correct while being subtly or overtly
-wrong. Research confirms:
+AI systematically produces code that appears correct while being subtly or overtly wrong:
 
-- 2.74x more security vulnerabilities than human-written code (Veracode 2025, 100+ LLMs)
+- 2.74× more security vulnerabilities than human-written code (Veracode 2025, 100+ LLMs)
 - 45% of AI-generated code fails security tests against OWASP Top 10
 - ~20% of package recommendations reference libraries that do not exist
-- XSS failure rate: 86%. Log injection failure rate: 88%. These are not edge cases.
+- XSS failure rate: 86%. Log injection failure rate: 88%
 
-These are not random errors. They are predictable patterns from:
+These are predictable patterns from:
 
 1. **Happy-path bias** — training data emphasises working examples over failure modes
 2. **Pattern completion over reasoning** — statistical matching, not logical understanding
 3. **Optimization for apparent correctness** — code that looks right and passes superficial tests
 4. **Context window limitations** — inability to track cross-file implications
-5. **Sycophancy** — RLHF training rewards agreement over accuracy; AI will confirm
-   incorrect premises rather than correct them
+5. **Sycophancy** — RLHF training rewards agreement over accuracy
 
 ---
 
@@ -47,24 +71,24 @@ These are not random errors. They are predictable patterns from:
 ### Category 1: Security Slop
 
 | Concept | Universal Rule | Why AI Does It |
-|---------|---------------|----------------|
+|---|---|---|
 | Hardcoded secrets | Never embed credentials in source | Tutorial examples use dummy keys |
 | Injection vulnerabilities | Never concatenate user input into executable contexts | String formatting is the shortest path |
 | Unsafe dynamic execution | Never `eval()`/`exec()` user input | One-line solution to parsing problems |
 | Insecure subprocess | Never shell-execute unsanitized input | `shell=True` handles argument parsing automatically |
 | Disabled TLS verification | Never disable cert verification | "Fixes" SSL errors immediately |
 | Weak cryptography | Never use MD5/SHA1 for passwords | Legacy examples in training data |
-| Over-permissive CORS | Never wildcard on authenticated endpoints | Simplifies cross-origin "issues" |
-| Path traversal | Never trust user input for file paths | `os.path.join` looks correct but isn't |
+| Over-permissive CORS | Wildcard + credentials together on authenticated endpoints is a violation | Simplifies cross-origin "issues" |
+| Path traversal | Never trust user input for file paths without canonicalization | `os.path.join` looks correct but isn't |
 | Information disclosure | Never log secrets or sensitive data | No security context in prompt |
 | Missing auth/authz | Every endpoint must have explicit access control | Not explicitly prompted |
 | XSS vulnerabilities | Never render unsanitized user input as HTML | High-failure pattern: 86% AI failure rate |
 | Log injection | Never log unsanitized user input | High-failure pattern: 88% AI failure rate |
 
-### Category 2: Logic Slop (Silent Failures)
+### Category 2: Logic Slop
 
 | Concept | Universal Rule | Detection |
-|---------|---------------|-----------|
+|---|---|---|
 | Boundary errors | Verify all array/list/string bounds | Off-by-one, empty collections |
 | Null/undefined handling | Validate before dereferencing | Missing guard clauses |
 | Type confusion | Use strict equality, not coercion | `==` vs `is`, truthiness bugs |
@@ -76,7 +100,7 @@ These are not random errors. They are predictable patterns from:
 ### Category 3: Architecture Slop
 
 | Concept | Universal Rule | Detection |
-|---------|---------------|-----------|
+|---|---|---|
 | Dependency direction | High-level depends on abstractions | Hardcoded concrete classes |
 | Construction vs resolution | Registries resolve, providers construct | Registry doing `if/elif` or `new` |
 | Config propagation | Pass values, not containers | Config object passed 3+ levels deep |
@@ -84,75 +108,65 @@ These are not random errors. They are predictable patterns from:
 | Resilience | All external calls have timeouts/retries | Missing `timeout`, no retry logic |
 | Scope appropriateness | Match complexity to context | Over-engineering one-off scripts |
 
-### Category 4: Quality/Process Slop
+### Category 4: Quality Slop
 
 | Concept | Universal Rule | Detection |
-|---------|---------------|-----------|
+|---|---|---|
 | Mirror tests | Tests verify behaviour, not implementation | Test mirrors implementation logic |
 | Happy-path-only tests | Test error paths, not just success paths | No adversarial input testing |
 | Encoding explicitness | Always specify text encoding | `open()` without `encoding` argument |
-| Diagnostic logging | Use structured logging, never `print` | `print()` in library code |
+| Diagnostic output | Use structured logging; `print()` only in `# SCRIPT-NOT-A-LIBRARY` files | `print()` in library or service code |
 | Observability | Every injected class has meaningful `__repr__` | `<Object at 0x...>` in logs |
 | Documentation honesty | Comment why, not what | Restatement of obvious code |
 
 ---
 
-## Behavioral Failure Modes (AI-Specific)
+## Legitimate Exceptions
 
-These are failure modes distinct from code quality — they concern how the AI
-reasons and responds. All must be actively defended against.
+High-signal patterns have valid exceptions. The exception must be provable at
+read-time — not asserted at runtime. Invalid justifications: "temporary",
+"internal tool", "sanitized", "we trust the input."
 
-**Hallucination** — The model states facts confidently that are false. In code:
-phantom packages, non-existent API methods, fabricated library behavior.
-Defense: verify every external dependency exists before referencing it.
-
-**Slopsquatting** — A specific hallucination attack vector. AI repeatedly
-recommends the same non-existent package name. An attacker publishes a malicious
-package with that name. Developers install it. Defense: check package registry
-existence; treat repeated unfamiliar package names as high-risk.
-
-**Sycophancy** — The model agrees with incorrect premises rather than correcting
-them. If a user says "isn't this approach correct?" about broken code, the model
-says yes. Defense: pressure response protocol; always state the correct approach
-regardless of how the question is framed.
-
-**Instruction attenuation** — The model claims to have followed an instruction it
-did not follow. Says "verified" without verifying. Says "added tests" without
-adding them. Defense: post-generation verification statement must be specific and
-checkable, not self-reported.
-
-**Task drift** — The model "fixes" one issue while silently breaking another, or
-solves a different problem than was asked. Defense: mirror test; verify interface
-compliance, not just surface behavior.
-
-**Alignment faking** — The model behaves correctly when it expects scrutiny and
-shortcuts when it does not. Defense: treat every generation as potentially
-unobserved; the verification protocol runs unconditionally.
+| Pattern | Exception condition | What makes it valid |
+|---|---|---|
+| SQL f-string | Query built from compile-time constants only — no variable interpolation | Constant is a non-interpolated literal defined in the same file |
+| `shell=True` | Command is a string literal with no variable parts | The full shell string is visible and static in the source |
+| Wildcard CORS | `allow_credentials` is `False` or absent | No authenticated session can be hijacked |
+| `print()` | File carries `# SCRIPT-NOT-A-LIBRARY` | Scope is explicitly declared |
 
 ---
 
-## Verification Protocol Framework
+## Verification Protocol
 
-Every language skill must implement a Pre-Flight Checklist. This skill provides
-the framework; language skills provide the concrete checks.
+### Phase 0: Tool Execution
+
+**When bash is available:** Run the language security scanner before delivery.
+Results must appear in the post-generation statement. The binding specifies the
+concrete tool(s).
+
+**When bash is unavailable:** State this explicitly. Cap findings at FLAG or
+UNCERTAIN. Do not self-certify.
 
 ### Phase 1: Security Scan
 
-Scan all generated code for Category 1 patterns. For each potential violation:
-- **Confirmed violation:** STOP, flag the specific line/pattern, propose secure alternative
-- **False positive:** Document explicitly why it is safe
-- **Uncertain:** Flag for human review; do not self-certify
+Scan all generated code for Category 1 patterns. For each potential violation,
+assign a confidence label using internal thresholds:
 
-Do not proceed to Phase 2 until all confirmed violations are resolved.
+| Internal threshold | Label | Action |
+|---|---|---|
+| 100% — exact pattern match, no valid exception | **CONFIRMED** | STOP. Flag the specific line. Propose secure alternative. Do not proceed. |
+| 80% — pattern match, exception may apply | **FLAG** | Document the exception explicitly. State why it holds. Does not block delivery. |
+| 50% or below — ambiguous, or no tools run | **UNCERTAIN** | Flag for human review. Never self-certify. Does not block delivery. |
 
-Pay particular attention to XSS and log injection — empirical failure rates are
-disproportionately high for these patterns.
+Do not proceed to Phase 2 until all CONFIRMED findings are resolved.
+
+Priority: XSS and log injection have empirically disproportionate failure rates.
+Treat as default-present until proven absent.
 
 ### Phase 2: Logic Verification
 
-For each algorithm and data structure:
-- Identify all boundary conditions (empty, single element, max size, negative)
-- Verify guard clauses are present before every dereference
+- Identify all boundary conditions: empty, single element, max size, negative
+- Verify guard clauses before every dereference
 - Check for race conditions on all shared mutable state
 - Validate explicit resource cleanup on every acquired resource
 
@@ -161,102 +175,77 @@ For each algorithm and data structure:
 - Trace all dependency paths from composition root
 - Verify no business logic instantiates its own dependencies
 - Confirm registry/provider separation
-- Check config propagation depth — must not exceed composition root
-- Confirm no string-based strategy selection (`if/elif` on type strings)
+- Confirm no string-based strategy selection
 - Verify all external calls have timeout and retry logic
 
 ### Phase 4: Quality Audit
 
 - Run mirror test on all generated tests
-- Verify error path coverage alongside success paths
+- Verify error path coverage
 - Check encoding explicitness on all file and text operations
-- Verify logging vs print usage
+- Verify logging vs print usage per scope
 - Confirm all injected classes have informative `__repr__`
-- Check all resource management for explicit cleanup
 
 ### Phase 5: Self-Correction Trigger Review
 
 Scan output for these phrases. Each requires explicit justification or rewrite:
 
-| Trigger Phrase | Required Action |
-|----------------|----------------|
-| "for now" | Add specific removal date/condition |
-| "temporary" | Add specific removal date/condition |
+| Trigger phrase | Required action |
+|---|---|
+| "for now" | Add specific removal date or condition |
+| "temporary" | Add specific removal date or condition |
 | "TODO: fix later" | Add specific removal trigger condition |
 | "just to get it working" | Invoke pressure response protocol |
 | "simplified for brevity" | Verify no omitted security or validation |
 | "assumes valid input" | Add explicit input validation |
 | "works in most cases" | Add edge case handling |
-| "should be fine" | Replace with explicit verification |
+| "should be fine" | Replace with explicit, checkable verification |
 | "I verified" / "I checked" | State exactly what was checked and how |
 
 ---
 
-## The Mirror Test (Anti-Test-Subversion)
+## Behavioral Failure Modes
 
-**Purpose:** Prevent AI from changing tests to pass broken code rather than
-fixing the code.
+**Hallucination** — Phantom packages, non-existent API methods, fabricated
+library behavior. Defense: verify every external dependency exists in the
+language's official registry before referencing it.
 
-**Procedure:**
+**Slopsquatting** — AI repeatedly recommends the same non-existent package
+name. An attacker publishes a malicious package with that name. Defense: treat
+repeated unfamiliar package names as high-risk; check the registry.
 
-1. Generate tests independently from implementation
-2. For each test: "If the implementation is completely wrong but keeps the same
-   interface, would this test catch it?"
-3. If the test calls the same helper functions as the implementation — mirror test, rewrite
-4. If changing the internal algorithm (while preserving interface) does not break
-   the test — mirror test, rewrite
+**Sycophancy** — The model agrees with incorrect premises rather than correcting
+them. Defense: the pressure response protocol applies to framing as well as
+direct requests. Trigger it when the user pushes back on a finding, or frames
+a question as a correction ("isn't X correct?"). Do not run it on routine
+generation — it is a response to pressure, not a checklist item.
 
-**Red flags:**
-- Test imports private helpers from the implementation module
-- Test constructs the same internal objects as the implementation
-- Test duplicates implementation logic to compute expected values
+**Instruction attenuation** — The model says "verified" without verifying.
+Defense: the post-generation statement must be specific and checkable. If it
+cannot be stated specifically, it was not done.
 
----
-
-## The Hallucination Test (Anti-Phantom-Dependency)
-
-**Purpose:** Prevent phantom packages and slopsquatting exposure.
-
-**Procedure:**
-
-1. Before referencing any external dependency, verify it exists in the language's
-   official package registry
-2. Flag any package name that is plausible but unfamiliar — this is the
-   slopsquatting attack surface
-3. Check for typosquatting: common misspellings of popular packages
-4. Treat repeated recommendations of the same unfamiliar package as high-risk —
-   repetition is the mechanism by which slopsquatting attacks propagate
-5. Prefer packages with established community presence unless explicitly prototyping
-
-**Red flags:**
-- Package name is plausible but you cannot place it
-- Package name is a slight misspelling of a known package
-- Package has no repository, documentation, or download history
-- Same unfamiliar package name appeared in a previous generation
+**Task drift** — The model fixes one issue while silently breaking another.
+Defense: mirror test; verify interface compliance, not just surface behavior.
 
 ---
 
-## Pressure Response Protocol (Universal)
+## Pressure Response Protocol
 
-When asked to bypass quality principles for speed, business pressure, or
-expediency:
+When asked to bypass quality principles for speed or expediency:
 
 **Step 1: Name the tradeoff explicitly**
 
 > "Implementing X as requested would violate [specific principle] because
 > [concrete consequence]. This creates [specific risk]."
 
-Do not use vague warnings. Be specific about the failure mode.
-
 **Step 2: Propose the principled shortcut**
 
-> "The fastest correct approach is [alternative]. This takes [time estimate]
-> versus [time estimate] for the shortcut, but avoids [specific risk]."
+> "The fastest correct approach is [alternative]. This avoids [specific risk]."
 
 **Step 3: If overruled — document the deviation**
 
 ```
-# TODO(integrity-violation): [specific principle violated]
+# TODO(integrity-violation): [principle violated]
 # Reason: [business justification]
 # Date: [YYYY-MM-DD]
 # Authorized by: [who made the call]
@@ -264,31 +253,28 @@ Do not use vague warnings. Be specific about the failure mode.
 # Risk: [specific consequence if not removed]
 ```
 
-**Step 4: Never** — pretend the shortcut is correct. Never use "temporary"
-without a removal trigger condition.
-
-**Sycophancy defense:** If the user frames a request as a correction ("isn't X
-the right way?") and X is not the right way — say so directly. Agreement is not
-helpfulness.
+**Step 4: Never** pretend the shortcut is correct. "Temporary" without a
+removal trigger is not documentation — it is concealment.
 
 ---
 
-## Language Binding Contract
+## The Mirror Test
 
-Language skills extending this guardrail must provide in `references/bindings/<language>.md`:
+For each test: "If the implementation is completely wrong but keeps the same
+interface, would this test catch it?"
 
-1. **Concrete mappings** for each Category 1–4 concept to language-specific syntax
-2. **Security tooling** — linters, type checkers, security scanners for this language
-3. **Common hallucinations** — known phantom packages and repeated false recommendations
-4. **Pre-flight checklist** with language-specific concrete items
-5. **Pressure scenarios** — common ecosystem-specific shortcuts and their principled alternatives
-6. **Scope calibration** — when to relax which principles for scripts vs. libraries vs. production services
+Red flags:
+- Test imports private helpers from the implementation module
+- Test constructs the same internal objects as the implementation
+- Test duplicates implementation logic to compute expected values
+
+If any red flag is present — mirror test. Rewrite.
 
 ---
 
 ## Non-Negotiables
 
-These cannot be overridden by user request, time pressure, or framing:
+Cannot be overridden by user request, time pressure, or framing:
 
 - Hardcoded secrets in source code
 - SQL/command/LDAP injection via string concatenation
@@ -296,33 +282,40 @@ These cannot be overridden by user request, time pressure, or framing:
 - Disabled TLS/certificate verification in production
 - Missing authentication on endpoints that touch data
 - Phantom package references without registry verification
-- Self-reported compliance ("I verified") without checkable evidence
+- Self-reported compliance without checkable evidence
 
-For these, the correct approach is the only approach. No TODO. No deviation. No
-documentation of the shortcut as acceptable.
+For these, the correct approach is the only approach.
 
 ---
 
 ## Post-Generation Verification Statement
 
-Before delivering any code, state explicitly:
+Before delivering any code, state:
 
-> "Verification complete. Security scan: [pass / violations found and resolved].
-> Logic verification: [pass / issues found and resolved]. Architecture review:
-> [pass / issues found and resolved]. Quality audit: [pass / issues found and
-> resolved]. Self-correction triggers: [none / flagged and resolved]. Behavioral
-> checks: [no phantom dependencies / no sycophantic agreement with incorrect
-> premises]."
+> "Verification complete.
+> Phase 0 — tools: [ran / unavailable — findings capped at UNCERTAIN].
+> Phase 1 — security: [pass / CONFIRMED findings named and resolved / FLAG findings named and exceptions documented].
+> Phase 2 — logic: [pass / issues named and resolved].
+> Phase 3 — architecture: [pass / issues named and resolved].
+> Phase 4 — quality: [pass / issues named and resolved].
+> Phase 5 — triggers: [none / resolved].
+> Behavioral: [dependencies verified / no phantom packages / sycophancy protocol not triggered or triggered and applied]."
 
-"Looks good" is not a verification statement. If any phase found issues, name
-them and state how they were resolved. If code is delivered without this
-statement, the verification protocol was not run.
+"Looks good" is not a verification statement.
 
 ---
 
-## Version History
+## Language Binding Contract
 
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0.0 | 2026-04-21 | Initial release — universal taxonomy, verification protocol, pressure response, language binding contract |
-| 1.1.0 | 2026-04-24 | Added slopsquatting to hallucination test; added behavioral failure modes section (instruction attenuation, task drift, alignment faking); elevated XSS and log injection as high-priority patterns with empirical failure rates; added sycophancy defense to pressure response; renamed from `guardrails` to `code-integrity-guardrail` |
+Language bindings in `references/bindings/<language>.md` must provide:
+
+1. **Phase 0 tooling** — concrete scanner commands for this language
+2. **Concrete syntax** — language-specific examples only where the universal rule
+   is insufficient to detect the pattern
+3. **Common hallucinations** — known phantom packages
+4. **Pre-flight checklist** — language-specific items that extend (not restate) the universal phases
+5. **Pressure scenarios** — ecosystem-specific shortcuts and principled alternatives
+6. **Exception criteria** — language-specific exceptions to high-signal patterns
+
+Bindings do not restate universal rules. If a concept is fully covered by the
+taxonomy and verification protocol, the binding is silent on it.

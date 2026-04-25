@@ -54,35 +54,11 @@ Read these when the task requires deep detail in that area:
 
 ## Design Smells — Flag Before Proceeding
 
+These are Python-engineering-specific. General quality and mechanics smells (mutable defaults, encoding, print, assert, logging, exception breadth, thread safety) are covered in `references/python-patterns.md` and enforced by the guardrail.
+
 - A class that instantiates its own dependencies
 - A component that receives a config object just to read one field
 - A registry with `if/elif` logic or that constructs objects
-- A `__post_init__` that coerces types rather than validates
-- A config object passed more than one level deep
 - A hardcoded list or template that should be discovery-driven
 - A base class with fields only one subclass uses
-- A broad `except Exception` without documented justification
-- `assert` used for runtime validation of external input
-- Logging that alters control flow or contains secret values
-- A mutable default argument (`def fn(items=[])`)
-- `open()` without `encoding="utf-8"`
-- `print()` used for errors or diagnostics
-- Shared mutable state with no synchronisation and concurrent access possible
-- Any comment that says "for now" or "temporary"
 - Conceptual artifacts — design decisions from a previous context that no longer apply
-
----
-
-## What Good Code Looks Like
-
-- Adding a new implementation requires no changes to any other file
-- The module docstring tells a new engineer exactly what to do to extend it
-- Every class receives its dependencies — it does not create them
-- Components receive values, not config containers
-- Config objects do not travel past the composition root
-- Registries only store and retrieve
-- Providers own construction and selection logic
-- The composition root is the only place that knows what is concrete
-- Every public interface is fully type-hinted
-- Every injected class has a meaningful `__repr__`
-- Every resource is released via a context manager or `close()`

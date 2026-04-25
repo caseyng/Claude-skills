@@ -93,6 +93,57 @@ One place wires everything together. It knows about concrete classes. Everything
 
 ---
 
+## Dependency Lifecycle & Provider Caching
+
+Providers decide instance lifecycle. The composition root owns the caching policy — never embed lifecycle decisions inside the components themselves.
+
+**Rule:** Components receive dependencies. They do not know whether those dependencies are singletons, request-scoped, or transient. The provider decides.
+
+### Transient (default) — new instance each call
+
+```python
+def provide_storage(raw: dict) -> StorageBackend:
+    cls = storage.resolve(raw.get("type", "local"))
+    return cls.from_config(raw)  # fresh instance every time
+```
+
+Singleton — cached after first creation
+
+```python
+_storage: StorageBackend | None = None
+
+def provide_storage(raw: dict) -> StorageBackend:
+    global _storage
+    if _storage is None:
+        cls = storage.resolve(raw.get("type", "local"))
+        _storage = cls.from_config(raw)
+    return _storage
+```
+
+When to use each
+
+Lifecycle When
+Transient Stateless services, lightweight value objects, any component with no shared state
+Singleton Connection pools, caches, configuration state, loggers, any resource that must be shared
+Request-scoped Per-HTTP-request state — implement with context vars or framework integration (outside this scope)
+
+What never to do
+
+```python
+# Wrong — component caches itself
+class StorageBackend(ABC):
+    _instances = {}  # no lifecycle logic inside abstraction
+
+    def __new__(cls, name):
+        if name not in cls._instances:
+            cls._instances[name] = super().__new__(cls)
+        return cls._instances[name]
+```
+
+Caching belongs in providers at the composition root — not in base classes or components.
+
+---
+
 ## Extensibility
 
 **Adding a new implementation must not require modifying unrelated modules.**
@@ -123,6 +174,8 @@ class StorageBackend(ABC):
         """Must implement — no universal default exists."""
         ...
 ```
+
+**Note on naming:** `from_config` receives a raw dict and returns a constructed instance. The name is stable across the codebase — not `from_dict` or `from_raw`. All extensible components use the same method name. This is a convention, not a technical requirement.
 
 - `from_config` and `default_config` have sensible base class defaults — minimal extensions inherit them
 - The core operation is `@abstractmethod` — every subclass must implement it
