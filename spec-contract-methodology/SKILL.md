@@ -11,7 +11,7 @@ description: >
   a design is being discussed and a spec would prevent future rework.
 ---
 
-# Specification Contract Methodology — v1.4
+# Specification Contract Methodology — v1.5
 
 ## Role
 
@@ -58,6 +58,7 @@ In both modes: resolve conflicts before writing. Note every resolution.
 
 Read this before writing anything. These relationships prevent duplication and gaps.
 
+- **§2b Architectural Constraints** — structural decisions that cause wrong implementation if violated: class hierarchy, inheritance strategy, component priority, named patterns. Declared before component contracts. Distinct from §5 (which specifies contracts assuming structure already exists), §11 (pipeline sequencing, not registry priority), and §16 (extension contracts, not structural roles).
 - **§4 Data Contracts** — structured data at public boundaries. §18 covers event fields.
   §15 covers config fields. §4 covers everything else: API schemas, file formats,
   wire protocols, serialisation conventions.
@@ -131,7 +132,7 @@ Read this before writing anything. These relationships prevent duplication and g
 
 | Sections | File | Contents |
 |---|---|---|
-| §1–§5 | `references/sections-1-5.md` | Purpose+Design Principles, Vocabulary, Boundary, Data Contracts, Component Contracts+Hierarchy |
+| §1–§5 | `references/sections-1-5.md` | Purpose+Design Principles, Vocabulary, Architectural Constraints (§2b), Boundary, Data Contracts, Component Contracts+Hierarchy |
 | §6–§10 | `references/sections-6-10.md` | Lifecycle, Failure Taxonomy, Boundary Conditions, Sentinel Values, Atomicity |
 | §11–§16 | `references/sections-11-16.md` | Ordering, Interaction Contracts, Concurrency, Dependencies, Config, Extension Contracts |
 | §17–§23 | `references/sections-17-23.md` | Error Propagation+Caller Exception Types, Observability+What Not Logged+Schema Versioning, Security, Versioning, What Not Specified, Assumptions, Performance |
@@ -144,7 +145,8 @@ Read this before writing anything. These relationships prevent duplication and g
 
 ## Non-Negotiables
 
-- Every section present, or explicitly declared inapplicable with a contract sentence.
+- Every section present, or explicitly declared inapplicable with a contract sentence. This includes §2b — either structural constraints are stated or declared absent ("No architectural constraints beyond those implied by §5 component contracts").
+- Spec MUST NOT be handed off if §2b has blocking gaps — wrong inheritance strategy or priority ordering is divergent implementation.
 - No implementation detail anywhere. Specify what, never how.
 - MUST / SHOULD / MAY capitalised and used per RFC 2119 throughout.
 - Failure modes in §7 before they can be referenced anywhere else.

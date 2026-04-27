@@ -40,6 +40,47 @@ documentation, resolve it here and note the resolution.
 
 ---
 
+## §2b Architectural Constraints
+
+Structural decisions that, if left unspecified, would cause a competent implementor to
+build divergent structure. Not implementation detail. Not rationale. Only decisions
+where violation produces wrong implementation.
+
+**What belongs here:**
+- Class hierarchy and inheritance strategy — what extends what, and what MUST NOT
+- Component roles that determine structure: mixin, abstract base, standalone class
+- Priority and ordering rules not captured by §11 pipeline sequencing (e.g., registry
+  lookup order, catch-all placement rules)
+- Named patterns the implementation MUST follow (registry, strategy, catch-all)
+- Anything structural that §5, §11, or §16 cannot capture because they assume
+  structure already exists
+
+**What does NOT belong here:**
+- Implementation detail (data structures, algorithm internals)
+- Rationale or design diagrams
+- Anything already specified in §5 (component contracts), §11 (pipeline ordering), or
+  §16 (extension contracts)
+
+**Format:** State each constraint as a declarative rule. Name the component, state the
+structural decision, state any prohibition.
+
+```
+[Component]: [structural role]. [What it does/does not extend]. [Any structural prohibition].
+[Ordering rule]: [what is first/last and why this is structural, not just incidental].
+[Named pattern]: [pattern name] — [which components implement it, what the constraint is].
+```
+
+*Questions to answer:*
+- Would an implementor choose the wrong inheritance strategy without this?
+- Would an implementor choose the wrong component priority without this?
+- Are there named patterns the implementation must follow that appear nowhere else?
+- What structural decisions are non-negotiable for the system to work correctly?
+
+If no structural decisions constrain the implementation, write: "No architectural
+constraints beyond those implied by §5 component contracts."
+
+---
+
 ## §3 System Boundary
 
 What enters the system, what leaves it, and what the system promises about the

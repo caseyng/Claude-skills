@@ -151,6 +151,7 @@ applies it — it does not generate it.
 | Sentinel value | §4 or §5 (where produced), §9 (encoding conventions) |
 | State | §6 (lifecycle) |
 | Named exception type | §2 (vocabulary), section where raised |
+| Architectural constraint | §2b (class hierarchy, inheritance strategy, priority ordering, named patterns) |
 
 Every MISSING cell in the per-spec matrix is a gap. A gap is not a judgment — it is
 a binary result: required section is absent.
@@ -263,6 +264,7 @@ A spec is described by three independent values at any time.
 Every gap found by verification is classified:
 
 - **Blocking** — a competent implementor reading the spec without this would build divergent behaviour. Prevents handoff.
+  - Example: §2b absent for a class hierarchy — implementor would choose wrong inheritance strategy. = BLOCKING
 - **Non-blocking** — missing cross-reference, absent §8 entry for behaviour already stated clearly elsewhere, §2 entry for a term whose meaning is inferrable. Does not prevent handoff.
 
 The test: *"Would a competent implementor, reading the spec without this entry, build something that diverges from intended behaviour?"* Yes = blocking. No = non-blocking.
@@ -434,6 +436,7 @@ The invalidation table maps change type to the minimum re-run scope.
 | New assumption added | C Step 5 |
 | New boundary condition | A (Q7), C Step 3 |
 | New public data format | A (Q22), C Steps 1, 2 |
+| New or changed architectural constraint (§2b) | A (Q26), C Steps 1, 2 |
 
 Track currency in the spec status block. Each invalidating change increments the count.
 A full re-verification pass resets the count to zero and restores `CURRENT`.

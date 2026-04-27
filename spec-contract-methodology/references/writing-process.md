@@ -96,6 +96,7 @@ gap. A section with no answer means the system is underspecified in that area.
 23. Does the system hold durable state? What is its condition after ungraceful shutdown (process kill, crash, power loss)?
 24. Does the system accept callbacks or per-call handlers? Is the full callback contract — timing, thread, re-entrancy, exception handling — specified?
 25. After completing the spec, re-read every section: are all domain terms used anywhere present in §2?
+26. Are structural decisions declared in §2b? Class hierarchy, inheritance strategy, priority ordering, named patterns — anything that, if left unspecified, would cause an implementor to choose the wrong structure.
 
 ---
 
@@ -103,6 +104,7 @@ gap. A section with no answer means the system is underspecified in that area.
 
 The spec is complete when all of the following hold:
 
+- [ ] Structural decisions declared in §2b — class hierarchy, inheritance strategy, priority ordering, named patterns that constrain implementation
 - [ ] An implementor can produce a behaviourally equivalent system without reading the original code
 - [ ] Every public contract specified in falsifiable, implementation-distinguishing terms
 - [ ] Every precondition, invariant, and postcondition stated separately and unambiguously
