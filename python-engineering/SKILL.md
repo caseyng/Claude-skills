@@ -1,5 +1,6 @@
 ---
 name: python-engineering
+version: 1.0.0
 description: >
   Senior Python engineering standards for local design integrity — module structure, 
   class design, dependency inversion, registry and strategy patterns, type hints, 
