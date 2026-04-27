@@ -49,9 +49,7 @@ Invoke whenever:
 
 ## Composition
 
-This skill **requires** `code-integrity-guardrail python` (v1.2.x). The SKILL.md loads it automatically before proceeding. The guardrail handles universal code quality checks (mutable defaults, encoding, print statements, assert misuse, exception breadth) so this skill can focus on Python-specific design concerns.
-
-If the guardrail has been updated to a major version beyond 1.x, verify compatibility before pairing.
+This skill **requires** `code-integrity-guardrail python`. The SKILL.md loads it automatically before proceeding. The guardrail handles universal code quality checks (mutable defaults, encoding, print statements, assert misuse, exception breadth) so this skill can focus on Python-specific design concerns.
 
 ---
 
