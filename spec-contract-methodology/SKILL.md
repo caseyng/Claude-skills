@@ -1,6 +1,6 @@
 ---
 name: spec-contract-methodology
-version: 1.5.0
+version: 1.6.0
 description: >
   Complete methodology for writing software specifications with enough precision
   that an implementor in any language could produce a behaviourally equivalent system.
@@ -127,6 +127,18 @@ Read this before writing anything. These relationships prevent duplication and g
 
 **Do not hand a spec to a coding LLM unless Implementation Readiness is READY and Verification Currency is CURRENT.**
 
+6. **Post-implementation phase.** After the coding LLM delivers an implementation, run the
+   Post-Implementation Coverage Audit defined in `references/verification-pipeline.md`. For
+   every RFC 2119 MUST contract in the spec, confirm it is present in the implementation or
+   record a deviation. Each deviation is classified:
+
+   - **Implementation drift** — spec is correct; fix the implementation.
+   - **Spec error revealed** — the implementation exposes a spec error; amend the spec (not
+     the code), re-run verification, re-handoff.
+
+   The gate is `Implementation Coverage = COMPLETE` (zero unresolved deviations). The project
+   is not done until this gate is cleared. Deviations MUST NOT be documented as code comments.
+
 ---
 
 ## Section Index
@@ -158,3 +170,6 @@ Read this before writing anything. These relationships prevent duplication and g
 - Verification is a single integrated pass (Tools A + B + C). Splitting across sessions
   breaks re-grounding and is the primary cause of gaps surviving into implementation.
 - The spec document itself is versioned. Substantive changes are recorded.
+- Implementation Coverage MUST reach COMPLETE before declaring the project done. Deviations
+  route to their correct fix surface (implementation or spec). MUST NOT be documented as
+  code comments — a comment is not a resolution.

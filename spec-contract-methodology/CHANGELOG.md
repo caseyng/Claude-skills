@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.6.0 — 2026-04-27
+
+### Added
+- **Post-Implementation Coverage Audit** (Workflow step 6): after the coding LLM delivers
+  an implementation, every RFC 2119 MUST contract in the spec is confirmed present or
+  recorded as a deviation. Addresses a structural gap: the previous methodology had no
+  gate after implementation handoff, allowing implementation drift to go undetected.
+- **Deviation classification**: `IMPLEMENTATION_DRIFT` (spec correct; fix implementation)
+  vs `SPEC_ERROR_REVEALED` (implementation exposes spec error; amend spec, re-verify,
+  re-handoff). Derived from carapex post-mortem — gaps bifurcate by which artefact is wrong.
+- **Deviation report format** (`verification-pipeline.md`): `DEVIATION-[N]` entries with
+  entity, type, finding, spec evidence, impl evidence, resolution. Parallel to gap report
+  format.
+- **Implementation Coverage** — 4th status dimension: `COMPLETE` (zero unresolved
+  deviations) | `INCOMPLETE — N deviations (M unresolved)`. Independent of Implementation
+  Readiness and Verification Currency.
+- Non-negotiable: Implementation Coverage MUST reach COMPLETE before declaring project
+  done; deviations MUST NOT be documented as code comments.
+- Design rationale entries for why the audit is separate from pre-handoff verification,
+  why deviations route to a fix surface (not comments), why `SPEC_ERROR_REVEALED`
+  requires spec amendment, and why code quality is not a step in the coverage audit.
+
+### Changed
+- SKILL.md: v1.5.0 → v1.6.0
+- Status block examples updated to show all four dimensions.
+
+---
+
 ## 1.5.0 — 2026-04-27
 
 ### Added

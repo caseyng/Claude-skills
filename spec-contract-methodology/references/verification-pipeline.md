@@ -71,6 +71,18 @@ Input (idea / codebase / existing docs)
 
   → [Implementation hand-off]
       Spec + implementation checklist → coding LLM
+
+  → [Post-Implementation Coverage Audit]
+      Input: completed implementation + spec (at Implementation Readiness = READY)
+      Step 1: Extract all RFC 2119 MUST contracts from spec → contracts.md
+      Step 2: For each contract, locate corresponding implementation; confirm or record deviation
+      Step 3: Classify each deviation:
+        IMPLEMENTATION_DRIFT   — spec is correct; implementation must change
+        SPEC_ERROR_REVEALED    — implementation exposes a spec error; amend spec, re-verify, re-handoff
+      Produces: implementation-coverage.md
+      Gate: Implementation Coverage = COMPLETE (zero unresolved deviations)
+      On IMPLEMENTATION_DRIFT: fix implementation → re-run audit
+      On SPEC_ERROR_REVEALED: amend spec → re-run verification (full pass) → re-handoff → re-run audit
 ```
 
 ---
@@ -234,6 +246,48 @@ Verification Currency:    CURRENT | N invalidating changes since last pass
 
 ---
 
+## The Deviation Report Format
+
+The deviation report is the output of the Post-Implementation Coverage Audit. Its structure
+must allow the human to route each deviation to its correct fix surface without watching
+the audit happen.
+
+**Format per deviation entry:**
+
+```
+DEVIATION-[N]
+Entity:        [spec entity — section + short contract label]
+Type:          IMPLEMENTATION_DRIFT | SPEC_ERROR_REVEALED
+Finding:       [one sentence: what the spec requires vs what the implementation does]
+Spec evidence: [section + the MUST claim verbatim]
+Impl evidence: [file path + line range showing the deviation]
+Resolution:    OPEN — [fix implementation | amend spec at §N]
+```
+
+**Deviation types:**
+
+- `IMPLEMENTATION_DRIFT` — the spec is correct; the implementation does not satisfy the
+  contract. Fix the implementation.
+- `SPEC_ERROR_REVEALED` — the implementation exposes a problem in the spec (contradiction,
+  missing clause, wrong requirement). Amend the spec, re-run verification, re-handoff.
+  Do not work around it in code.
+
+The distinction determines where the fix goes. Default instinct is to fix code — resist it.
+Ask which is correct first.
+
+**Deviation report header:**
+
+```
+IMPLEMENTATION COVERAGE AUDIT — [date]
+Spec version:            [version]
+Implementation:          [path or tag]
+Deviation list:          [N IMPLEMENTATION_DRIFT, M SPEC_ERROR_REVEALED]
+Unresolved:              [N]
+Implementation Coverage: COMPLETE | INCOMPLETE — see DEVIATION-[N], DEVIATION-[N]
+```
+
+---
+
 ## FLAG Format (Generation Phase)
 
 During generation, when the LLM makes a provisional decision due to ambiguity:
@@ -297,14 +351,31 @@ A change is **invalidating** if and only if its type appears in the invalidation
 
 ---
 
+### 4. Implementation Coverage — independent of gap list
+
+Answers: has the implementation been checked against every RFC 2119 MUST in the spec, and
+are all deviations resolved?
+
+| Value | Condition |
+|---|---|
+| `COMPLETE` | Zero unresolved deviations. Every RFC 2119 MUST contract confirmed present in implementation. |
+| `INCOMPLETE — N deviations (M unresolved)` | Deviations recorded; each must route to its correct fix surface before COMPLETE is reached. |
+
+A `SPEC_ERROR_REVEALED` deviation resolved by spec amendment is an invalidating change —
+re-run affected verification steps and restore Verification Currency to `CURRENT` before
+re-handoff.
+
+---
+
 ### Reading the status block
 
-A spec header carries all three values:
+A spec header carries all four values:
 
 ```
 Implementation Readiness:  READY
 Gap List:                  0 blocking, 3 non-blocking
 Verification Currency:     CURRENT
+Implementation Coverage:   COMPLETE
 ```
 
 Or:
@@ -313,6 +384,7 @@ Or:
 Implementation Readiness:  NOT READY — see GAP-3, GAP-7
 Gap List:                  2 blocking, 5 non-blocking
 Verification Currency:     2 invalidating changes since last pass (new failure mode, renamed method)
+Implementation Coverage:   INCOMPLETE — 3 deviations (2 unresolved)
 ```
 
 **A spec MUST NOT be handed to a coding LLM unless Implementation Readiness is `READY` and Verification Currency is `CURRENT`.**
@@ -389,6 +461,34 @@ human who understands the domain.
 
 **Why human review receives spec and gap report together.** A gap report without a spec
 is abstract. A spec without a gap report asks the human to re-do the verification.
+
+**Why the Post-Implementation Coverage Audit is separate from pre-handoff verification.**
+Pre-handoff verification (Tools A + B + C) checks that the spec is internally consistent
+and implementation-ready. It cannot check the implementation — the implementation does not
+exist yet. The audit checks that the implementation satisfies the spec. These are orthogonal
+concerns at different points in the lifecycle. Conflating them produces a workflow where
+implementation gaps are never systematically caught.
+
+**Why deviations route to a fix surface, not to code comments.**
+A code comment documenting a spec deviation is not a resolution — it is a deferral. The
+comment is invisible to the spec, invisible to the next verification pass, and invisible to
+the next implementor who reads the spec. Every deviation must either change the implementation
+or change the spec.
+
+**Why `SPEC_ERROR_REVEALED` deviations require spec amendment and re-verification.**
+An implementation that diverges from the spec because the spec is wrong is not an
+implementation bug. Fixing the code to match a wrong spec produces a conforming-but-incorrect
+system. The spec is the source of truth — its authority holds only when it is correct. A
+deviation that exposes a spec error must surface that error through the amendment process,
+not bury it in the implementation.
+
+**Why code quality verification is not a step in the coverage audit.**
+Code quality (security, logic correctness, hallucinated packages) is orthogonal to spec
+fidelity. The audit asks: does the implementation satisfy the MUST contracts in the spec?
+Code quality asks: is the implementation correct code? Running them together muddles the
+classification — a code quality finding is not a DEVIATION, and a coverage gap is not a
+code quality issue. Code quality verification is the coding LLM's responsibility, applied
+at the time of writing, not a phase of the post-implementation audit.
 
 ---
 
