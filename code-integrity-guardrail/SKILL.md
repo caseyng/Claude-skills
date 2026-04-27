@@ -1,5 +1,11 @@
 ---
 name: code-integrity-guardrail
+description: >
+  Universal anti-slop verification system for AI-generated code. Defines the slop
+  taxonomy, mandatory verification protocol, pressure response framework, and
+  behavioral failure mode defenses. Compose with language-specific skills that
+  provide concrete bindings. Invoke this skill whenever writing, reviewing, or
+  refactoring code in any language.
 version: 1.2.2
 ---
 

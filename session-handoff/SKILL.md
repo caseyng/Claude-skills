@@ -1,19 +1,31 @@
 ---
 name: session-handoff
+version: 2.0.0
 description: >
-  Manages context continuity across Claude sessions. Use this skill in TWO situations:
-  (1) GENERATING a handoff — when context is filling up, when the user asks for a handoff,
-  or proactively before starting something large that may exhaust the context window.
-  Trigger phrases: "handoff", "new window", "context is full", "start fresh", or when
-  Claude detects the conversation is nearing its limit.
-  (2) RECEIVING a handoff — when a new session opens and the user pastes a handoff document.
-  Trigger: user pastes a structured document that looks like a session handoff at the start
-  of a conversation.
+  Manages context continuity across Claude sessions.
+  Invocation:
+    /skill:session-handoff          → generate a handoff document for this session
+    /skill:session-handoff [file]   → resume from a handoff file at the given path
+  Also triggers proactively: when context compression begins, Claude emits an alert
+  and prompts the user to run /skill:session-handoff before context is lost.
 ---
 
 # Session Handoff Skill
 
-Two modes. Read the situation and apply the correct one.
+## Invocation routing
+
+- **No argument** → Mode 1: generate a handoff document for this session
+- **File path argument** → Mode 2: read that file, then receive the handoff
+
+## Context pressure watch (always active — not invocation-dependent)
+
+Whenever the system indicates that prior messages are being compressed (the system-reminder containing "automatically compress prior messages" appears), emit this alert **before any other response**:
+
+```
+⚠️  Context pressure detected. Run /skill:session-handoff to preserve context before it's lost.
+```
+
+Do not wait to be asked. Surface this immediately. The user may not have noticed compression starting.
 
 ---
 
@@ -30,17 +42,14 @@ This makes generation fast and accurate. Handoffs reconstructed from memory at s
 
 ---
 
-## Mode 1: Generating a Handoff
+## Mode 1: Generate a Handoff
 
-Trigger this when:
-- User requests a handoff explicitly
-- Context window is visibly filling up
-- About to begin something large (long code task, big document, extended research)
+Triggered by `/skill:session-handoff` with no argument.
 
 ### Output format
 
 - Small handoff (fits comfortably in chat): output as a markdown code block the user can copy
-- Large handoff (complex project, many decisions, substantial state): create a `.md` file for download
+- Large handoff (complex project, many decisions, substantial state): create a `.md` file
 
 ### Compression rules
 
@@ -154,20 +163,21 @@ for this project — the one insight that, if lost, would cause the most damage.
 
 ---
 
-## Mode 2: Receiving a Handoff
+## Mode 2: Receive a Handoff
 
-Trigger this when a new session opens with a handoff document.
+Triggered by `/skill:session-handoff [file]` where a file path is provided.
 
 ### Workflow
 
-1. Read the entire handoff document carefully before responding
-2. Pay special attention to REASONING PATTERNS and USER CORRECTIONS — these are
+1. **Read the file** at the given path using the Read tool before doing anything else
+2. Read the entire handoff content carefully
+3. Pay special attention to REASONING PATTERNS and USER CORRECTIONS — these are
    higher signal than the state sections
-3. Confirm understanding explicitly — briefly restate: what you're working on,
+4. Confirm understanding explicitly — briefly restate: what you're working on,
    where things stand, what comes next, and the dominant reasoning pattern
-4. **Stop there.** Do not begin any work yet.
-5. Wait for the user to follow up with any additional files, documents, or context
-6. Only begin working once the user signals they are ready
+5. **Stop there.** Do not begin any work yet.
+6. Wait for the user to follow up with any additional files, documents, or context
+7. Only begin working once the user signals they are ready
 
 ### Confirmation format
 
