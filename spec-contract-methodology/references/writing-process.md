@@ -61,6 +61,18 @@ behaviour; they will invent one.
 **Atomicity MUST be stated, not assumed.** Whether a state-modifying operation is
 atomic is a contract.
 
+**Type relationships that are binding contracts MUST use RFC 2119 MUST.** "X is a Y
+subclass" is descriptive prose — it is documentation, not a contract. If an implementor
+must implement inheritance, say so explicitly: "X MUST be a Y subclass." Descriptive
+language does not bind an implementor.
+
+**Audit record fields that reveal internal state MUST be evaluated for information
+disclosure risk.** A field that names which pattern matched, which internal check
+triggered, or which threshold was breached allows an attacker to enumerate the system's
+detection surface. Before including any such field, ask: does disclosing this value
+help an attacker bypass the check? If yes, the field MUST use a generic description
+instead.
+
 ---
 
 ## Before You Write — 25 Questions
@@ -97,6 +109,8 @@ gap. A section with no answer means the system is underspecified in that area.
 24. Does the system accept callbacks or per-call handlers? Is the full callback contract — timing, thread, re-entrancy, exception handling — specified?
 25. After completing the spec, re-read every section: are all domain terms used anywhere present in §2?
 26. Are structural decisions declared in §2b? Class hierarchy, inheritance strategy, priority ordering, named patterns — anything that, if left unspecified, would cause an implementor to choose the wrong structure.
+27. For every type relationship in §2 or §5 ("X is a Y subclass", "X implements Y"): is it expressed with RFC 2119 MUST? Descriptive prose does not bind an implementor. If the relationship is required for conformance, it needs MUST.
+28. For every configuration field table in §15: does every default value in the table exactly match the behaviour described in the prose for that field? Table and prose are two representations of the same truth — if they disagree, one is wrong.
 
 ---
 
@@ -128,6 +142,9 @@ The spec is complete when all of the following hold:
 - [ ] Every failure mode has a category; internal invariant violations flagged separately from programming errors
 - [ ] Every open set has a handling contract for unknown values
 - [ ] Every security-relevant decision explicit, justified, states what is and is not guaranteed
+- [ ] Every type relationship that is a binding contract uses RFC 2119 MUST — not descriptive prose ("X is a Y subclass" is not a contract)
+- [ ] Every configuration field table default agrees with the prose description of that field — table and prose are two representations of the same truth
+- [ ] Every audit record field that reveals internal state (matched pattern, triggered check, breached threshold) evaluated for information disclosure risk; generic descriptions used where disclosure aids an attacker
 - [ ] Versioning and stability declared for every public interface
 - [ ] Spec document itself is versioned; substantive changes recorded
 - [ ] Set of things not specified is explicitly stated

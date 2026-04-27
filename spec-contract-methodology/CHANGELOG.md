@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.7.0 — 2026-04-27
+
+### Added
+Three authoring rules and verification checks derived from carapex spec audit post-mortem.
+All four gaps found had a common thread: the verification pipeline is batch, not inline —
+checks run once at review time but the errors were introduced during authoring.
+
+- **Writing Rule: type relationship MUST** — "X is a Y subclass" is descriptive prose, not
+  a contract. Binding type relationships MUST use RFC 2119 MUST. Addresses the failure mode
+  where a glossary definition reads as documentation rather than a normative requirement,
+  allowing it to slip past the RFC 2119 sweep (Q5 was not specific enough to flag type
+  relationships written in prose form).
+- **Writing Rule: audit field information disclosure** — fields that name which pattern
+  matched, which check triggered, or which threshold was breached allow an attacker to
+  enumerate the detection surface. Evaluated at field-authoring time, not at security review.
+- **Q27 (Before You Write / Tool A)** — for every type relationship in §2 or §5: is it
+  expressed with RFC 2119 MUST? Catches the GAP-3 class of error in verification sweep.
+- **Q28 (Before You Write / Tool A)** — for every configuration field table in §15: does
+  every default value agree with the prose description? Catches the GAP-4 class of error
+  (table and prose as two representations of the same truth that can contradict each other).
+- **When Spec Is Done checklist** — three new items corresponding to the three rules above.
+
+### Rationale
+The batch verification problem: by the time Tool A runs, the author has committed mentally
+to the spec's structure. Contradictions between table and prose, prose-as-requirement without
+MUST, and requirements with security side-effects are all easier to catch at the point of
+authoring than in a single end-of-document pass. Adding them to Writing Rules and the
+Before You Write checklist moves the catches earlier in the process.
+
+---
+
 ## 1.6.0 — 2026-04-27
 
 ### Added
