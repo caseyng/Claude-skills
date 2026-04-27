@@ -4,28 +4,57 @@ Reusable Claude skills built for one purpose: making AI output reliable enough t
 
 Most Claude skills automate tasks. These enforce standards. The difference matters when the output has to hold up — in production, under edge cases, across sessions.
 
-Each skill is a unit: a `.skill` file that installs into Claude, and a prompt file that documents the reasoning behind it. Install what you need. Read the prompt file if you want to understand the thinking.
+Each skill is a `SKILL.md` file loaded by Claude when invoked as `/skill:<name>`. A `README.md` explains each skill's purpose and design. Install what you need.
 
 ---
 
 ## Skills
 
-### [spec-contract-methodology](./spec-contract-methodology/)
-LLMs are probabilistic. Without a precise specification, they fill gaps with assumptions — and those assumptions become bugs. This skill enforces a 23-section specification methodology rigorous enough that any engineer, in any language, could rebuild the system without reading the original code. Built because other spec-driven tools automate the process; this one enforces the standard.
+### [code-integrity-guardrail](./code-integrity-guardrail/)
 
-### [session-handoff](./session-handoff/)
-Claude has no memory between sessions. Most handoff tools preserve state — where you were, what was done. This one preserves reasoning: why decisions were made, what was tried and rejected, where Claude's thinking was wrong and you corrected it. A new session that only knows the decisions will repeat the same mistakes.
+AI-generated code has a characteristic failure mode: it looks right, passes the test, and contains slop — mutable defaults, bare exception catches, missing encodings, phantom packages. This skill is a universal verification layer that runs before any code is accepted. It defines a slop taxonomy, a mandatory verification protocol, and a pressure response framework for when shortcuts are tempting. Language-specific bindings extend it without restating it.
 
-### [python-engineering](./python-engineering/)
-AI-generated Python code has a characteristic failure mode: it works, and it's wrong. It passes the test, misses the design. This skill enforces senior engineering standards before a line is written — dependency inversion, proper ABCs, composition roots, registry patterns — so Claude codes like an engineer who has to maintain it, not one who just has to ship it.
+Invoke as `/skill:code-integrity-guardrail <language>`. Currently has a Python binding.
 
 ---
 
-## How to use
+### [python-engineering](./python-engineering/)
 
-Install the `.skill` file into your Claude environment and reference it by name.
+AI-generated Python code has a characteristic failure mode: it works, and it's wrong. It passes the test, misses the design. This skill enforces senior engineering standards — dependency inversion, proper ABCs, composition roots, registry patterns — so Claude codes like an engineer who has to maintain it, not one who just has to ship it.
 
-The `_prompt.md` file in each folder is optional reading. It documents the intent, decisions, and reasoning behind each skill — not instructions for the user, but a record of the thinking. Read it if you want to understand why the skill works the way it does.
+**Requires `code-integrity-guardrail python`.** The skill loads the guardrail automatically before proceeding. The guardrail handles universal code quality checks; this skill handles Python-specific design. They are not interchangeable — both are needed.
+
+Invoke as `/skill:python-engineering`.
+
+---
+
+### [spec-contract-methodology](./spec-contract-methodology/)
+
+LLMs are probabilistic. Without a precise specification, they fill gaps with assumptions — and those assumptions become bugs. This skill enforces a 23-section specification methodology rigorous enough that any engineer, in any language, could rebuild the system without reading the original code. Structural decisions, failure modes, boundary conditions, and extension contracts all have named homes. A spec that passes verification has zero blocking gaps — every ambiguity an implementor would reach for the code to resolve is eliminated first.
+
+Invoke as `/skill:spec-contract-methodology`.
+
+---
+
+### [session-handoff](./session-handoff/)
+
+Claude has no memory between sessions. Most handoff tools preserve state — where you were, what was done. This one preserves reasoning: why decisions were made, what was tried and rejected, where Claude's thinking was wrong and you corrected it. A new session that only knows the decisions will repeat the same mistakes.
+
+Invoke as `/skill:session-handoff` to generate a handoff, or `/skill:session-handoff <path>` to resume from one.
+
+---
+
+## Structure
+
+Each skill follows the same layout:
+
+```
+<skill-name>/
+  SKILL.md        — LLM execution entry point. Self-contained enough to act without reading anything else.
+  README.md       — Purpose, invocation, design rationale. For humans.
+  CHANGELOG.md    — Version history. Kept out of SKILL.md to reduce context load.
+  references/     — Supporting material loaded on demand by SKILL.md.
+```
 
 ---
 
