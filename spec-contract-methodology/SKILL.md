@@ -1,5 +1,6 @@
 ---
 name: spec-contract-methodology
+version: 1.5.0
 description: >
   Complete methodology for writing software specifications with enough precision
   that an implementor in any language could produce a behaviourally equivalent system.
@@ -11,7 +12,7 @@ description: >
   a design is being discussed and a spec would prevent future rework.
 ---
 
-# Specification Contract Methodology — v1.5
+# Specification Contract Methodology
 
 ## Role
 
