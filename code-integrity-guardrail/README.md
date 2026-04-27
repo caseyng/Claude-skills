@@ -1,6 +1,7 @@
 # code-integrity-guardrail
 
-Universal anti-slop verification system for AI-generated code.
+Anti-slop verification system for AI-generated code. Language-agnostic core; language-specific
+behaviour via bindings. Currently has a Python binding.
 
 ## Structure
 

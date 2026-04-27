@@ -1,6 +1,6 @@
 ---
 name: code-integrity-guardrail
-version: 1.2.2
+version: 1.2.3
 description: >
   Universal anti-slop verification system for AI-generated code. Defines the slop
   taxonomy, mandatory verification protocol, pressure response framework, and
@@ -55,12 +55,10 @@ operations, resource cleanup.
 
 ## Core Assumption
 
-AI systematically produces code that appears correct while being subtly or overtly wrong:
-
-- 2.74× more security vulnerabilities than human-written code (Veracode 2025, 100+ LLMs)
-- 45% of AI-generated code fails security tests against OWASP Top 10
-- ~20% of package recommendations reference libraries that do not exist
-- XSS failure rate: 86%. Log injection failure rate: 88%
+AI systematically produces code that appears correct while being subtly or overtly wrong.
+Security vulnerability rates in AI-generated code are measurably higher than in human-written
+code. Injection and XSS vulnerabilities have disproportionately high failure rates. Package
+hallucinations are common enough to have a named attack vector (slopsquatting).
 
 These are predictable patterns from:
 

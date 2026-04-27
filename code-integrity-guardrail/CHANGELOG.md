@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.3 — 2026-04-27
+
+### SKILL.md
+- Removed specific statistics from Core Assumption (Veracode 2025 numbers, XSS/log injection
+  percentages): unverifiable figures with specific citations undermine credibility if wrong.
+  Core claim retained in defensible form: AI vulnerability rates are measurably higher;
+  injection and XSS have disproportionately high failure rates; slopsquatting is named.
+
+### README.md
+- Removed "Universal" from tagline — one language binding doesn't earn the claim.
+  Replaced with "Language-agnostic core; language-specific behaviour via bindings."
+
+---
+
 ## 1.2.2 — 2026-04-25
 
 ### references/verification-protocol.md
