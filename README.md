@@ -14,7 +14,7 @@ Each skill is a `SKILL.md` file loaded by Claude when invoked as `/skill:<name>`
 
 AI-generated code has a characteristic failure mode: it looks right, passes the test, and contains slop — mutable defaults, bare exception catches, missing encodings, phantom packages. This skill is a universal verification layer that runs before any code is accepted. It defines a slop taxonomy, a mandatory verification protocol, and a pressure response framework for when shortcuts are tempting. Language-specific bindings extend it without restating it.
 
-Invoke as `/skill:code-integrity-guardrail <language>`. Currently has a Python binding.
+Invoke as `/skill:code-integrity-guardrail <language>`. Has Python and Kotlin bindings.
 
 ---
 
@@ -33,6 +33,16 @@ Invoke as `/skill:python-engineering`.
 LLMs are probabilistic. Without a precise specification, they fill gaps with assumptions — and those assumptions become bugs. This skill enforces a 23-section specification methodology rigorous enough that any engineer, in any language, could rebuild the system without reading the original code. Structural decisions, failure modes, boundary conditions, and extension contracts all have named homes. A spec that passes verification has zero blocking gaps — every ambiguity an implementor would reach for the code to resolve is eliminated first.
 
 Invoke as `/skill:spec-contract-methodology`.
+
+---
+
+### [android-engineering](./android-engineering/)
+
+AI-generated Android code has a characteristic failure mode: it compiles, the architecture looks reasonable, and then it gets killed by Doze mode, leaks an Activity, uses the wrong foreground service type on Android 14, or puts a tappable element on screen with no visual affordance. This skill enforces senior Android engineering standards — MVVM layer discipline, platform norms (battery, background, exact alarms, timezone), Material Design 3, security (Keystore, EncryptedSharedPreferences, ProGuard), and correct testing patterns.
+
+**Requires `code-integrity-guardrail kotlin`.** The skill loads the guardrail automatically. The Kotlin binding adds Android-specific violations: Room SQL injection, WebView JS, Logcat PII exposure, PendingIntent security, null safety, and context leaks.
+
+Invoke as `/skill:android-engineering`.
 
 ---
 
