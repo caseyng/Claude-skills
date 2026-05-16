@@ -1,5 +1,33 @@
 # Changelog — system-design
 
+## 1.2.0 — 2026-05-16
+
+### Added
+
+- **`platform` field per component** — each component now declares its implementation
+  platform (`android`, `go`, `python`, `typescript`, `swift-ios`, `nodejs`, `rust`).
+  Drives Stage 4 per-component skill selection and Stage 2 feasibility check.
+- **`references/enrichment-backend.md`** — 12-concern checklist for backend services:
+  database selection + ownership, connection management, API design, auth boundary,
+  background processing, configuration, graceful shutdown, health/readiness, observability,
+  external dependencies, data retention, deployment model.
+- **Completeness check item 10** — every component has a `platform` field populated with
+  a recognised value.
+- **Completeness check item 11** — platform enrichment checklist addressed for each platform
+  present in the component list (replaces single-platform check).
+- **Backend enrichment reference** — `references/enrichment-backend.md` added alongside
+  universal and Android enrichment checklists.
+
+### Changed
+
+- SKILL.md: v1.1.0 → v1.2.0
+- Phase 1 intake: load `enrichment-backend.md` for any project with a backend component
+  (Go, Python, Node.js, Rust). Previously read "(web and backend enrichment references,
+  when built)" — now the file exists.
+- Phase 2 decomposition: `platform` field added to the per-component identification list.
+
+---
+
 ## 1.1.0 — 2026-05-16
 
 ### Added

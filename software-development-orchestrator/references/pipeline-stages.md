@@ -87,7 +87,7 @@ technical decisions with alternatives considered.
 
 | Field | Description |
 |---|---|
-| `components` | List of components. Each component: `name`, `purpose` (one sentence), `boundary` (what it owns and what it does not own), `inputs` (what it receives), `outputs` (what it produces) |
+| `components` | List of components. Each component: `name`, `purpose` (one sentence), `boundary` (what it owns and what it does not own), `inputs` (what it receives), `outputs` (what it produces), `platform` (implementation language/environment — see Platform-Skill Map below) |
 | `shared_types` | Data structures that cross component boundaries — defined once here, referenced by interaction contracts and component specs. Each type: name, fields with types, required/optional. |
 | `interaction_contracts` | For each pair of components that communicate: `from`, `to`, `what_is_passed`, `format` (complete type definition referencing shared_types), `owner` (which component is responsible for the data), `on_failure` |
 | `cross_cutting_concerns` | Concerns that span multiple components: `name`, `description`, `affected_components`, `owner_component` (which component is responsible for enforcing it). Includes: error propagation strategy, logging, security boundary, data persistence ownership, observability. |
@@ -99,10 +99,23 @@ It is locked on approval — changes require returning to Stage 2.
 
 **Validation criteria (orchestrator checks before human gate):**
 - All schema fields present and non-empty
-- Every component has a non-empty `boundary`, `inputs`, and `outputs`
+- Every component has a non-empty `boundary`, `inputs`, `outputs`, and `platform`
+- Every component's `platform` value appears in the Platform-Skill Map below
 - Every cross-component communication has a corresponding `interaction_contract`
 - `cross_cutting_concerns` is non-empty
 - Every component name is unique within the list
+
+**Feasibility check (orchestrator runs at Stage 2 human gate, before presenting):**
+For each component, look up its `platform` in the Platform-Skill Map. If the mapped
+Stage 4 skill status is MISSING, include a non-blocking warning in the gate presentation:
+
+```
+⚠ Component '[name]' platform '[platform]' has no matching Stage 4 skill.
+  Stage 4 will emit a gap notice when this component is reached.
+  Proceed and build the skill before Stage 4, or redesign the component now.
+```
+
+This warning does not block Stage 2 approval — the human decides whether to proceed.
 
 **Human gate:**
 Present a summary and reference `output/stage-2-system-design.md`. Human reads the file and either:
@@ -170,13 +183,16 @@ file references for each spec. Human reads the files and either:
 
 ## Stage 4 — Implementation
 
-**Skills:** Platform engineering skill + `code-integrity-guardrail` — EXISTS
+**Skills:** Platform engineering skill (per component) + `code-integrity-guardrail` — EXISTS
 - `android-engineering`: EXISTS
 - `python-engineering`: EXISTS
+- `go-engineering`: EXISTS
 - `code-integrity-guardrail`: EXISTS
 
-Select the platform engineering skill based on the target platform identified in the
-Requirements Document.
+Platform skill selection is **per component**, not per project. Each component's `platform`
+field from Stage 2 determines which skill it receives. See Platform-Skill Map at the end of
+this file. If a component's platform has no matching skill → emit a gap notice for that
+component only. Other components proceed.
 
 **Parallelism:** Parallel per component
 
@@ -187,8 +203,8 @@ Requirements Document.
 **Context package per parallel agent:**
 - Full System Design Document from Stage 2 (`output/stage-2-system-design.md`)
 - This component's specification from Stage 3 (`output/stage-3-spec-[component-name].md`)
-- The appropriate platform engineering skill for this component's platform
-- The `code-integrity-guardrail` skill
+- The platform engineering skill matching this component's `platform` field (from Platform-Skill Map)
+- The `code-integrity-guardrail` skill with the language binding matching this component's platform
 - Iteration > 1: prior artifact (`output/stage-4-impl-[component-name].md`) + decision log
 
 **What to record in decision log:** `SPEC_ERROR_REVEALED` deviations found and how resolved
@@ -326,3 +342,26 @@ no mocks, no fakes, real implementations communicating.
 
 Not a stage — a milestone. The product works. Human accepts delivery.
 Reached when Stage 6 passes and human approves the integration test results.
+
+---
+
+## Platform-Skill Map
+
+Maps each component `platform` value to the Stage 4 engineering skill and the matching
+`code-integrity-guardrail` language binding. Used at Stage 2 feasibility check and at
+Stage 4 agent spawn time.
+
+| Platform value | Stage 4 skill | Guardrail binding | Status |
+|---|---|---|---|
+| `android` | `android-engineering` | `kotlin` | EXISTS |
+| `go` | `go-engineering` | `go` | EXISTS |
+| `python` | `python-engineering` | `python` | EXISTS |
+| `typescript` | `typescript-engineering` | `typescript` | MISSING |
+| `nodejs` | `nodejs-engineering` | `typescript` | MISSING |
+| `swift-ios` | `ios-engineering` | `swift` | MISSING |
+| `rust` | `rust-engineering` | `rust` | MISSING |
+
+**Adding a new platform:** Create the platform engineering skill, add the guardrail binding
+at `code-integrity-guardrail/references/bindings/<binding>.md`, then add a row here with
+status EXISTS. The feasibility check at Stage 2 and the skill selection at Stage 4 are both
+driven from this table.

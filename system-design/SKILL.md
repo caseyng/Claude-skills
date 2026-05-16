@@ -1,6 +1,6 @@
 ---
 name: system-design
-version: 1.1.0
+version: 1.2.0
 description: >
   Translates an approved Requirements Document into a System Design Document.
   Decomposes the product into components with clear boundaries, defines interaction
@@ -39,7 +39,7 @@ Read the approved Requirements Document completely.
 Load the appropriate platform enrichment checklist:
 - `references/enrichment-universal.md` — every project
 - `references/enrichment-android.md` — Android applications
-- (web and backend enrichment references, when built)
+- `references/enrichment-backend.md` — backend services (Go, Python, Node.js, Rust)
 
 Identify:
 - Requirements with direct architectural implications (force specific component shapes or technology choices)
@@ -83,6 +83,7 @@ everything else is built on — confirm it before building on it.
 - Boundary (what it owns; what it explicitly does not own)
 - Inputs (what it receives, from what source)
 - Outputs (what it produces, to what destination)
+- Platform (the implementation language/environment: `android`, `go`, `python`, `typescript`, `swift-ios`, `nodejs`, or `rust`). A single project may have components with different platforms — this is expected and correct. The platform field drives Stage 4 skill selection.
 
 Present the component list. For each component, include a one-sentence rationale for why it is a separate component rather than part of another. Wait for the human to approve, redirect, or merge/split components.
 
@@ -180,7 +181,8 @@ Before producing the System Design Document, verify all of the following:
 7. Every cross-cutting concern has exactly one owner component
 8. Every significant technical decision is recorded with rationale
 9. All infeasible or deferred items are explicitly listed
-10. The platform enrichment checklist is fully addressed
+10. Every component has a `platform` field populated with a recognised value
+11. The platform enrichment checklist is fully addressed for each platform present in the component list
 
 **Stage 2 litmus test (apply last):** Would a component spec writer, reading this design,
 make a wrong structural decision for any component? If yes — that gap is blocking. Resolve it.
@@ -199,7 +201,7 @@ The System Design Document — one structured markdown file.
 | Field | Description |
 |---|---|
 | `project_name` | Matches the Requirements Document |
-| `components` | List of components, each with: name, purpose, boundary, inputs, outputs |
+| `components` | List of components, each with: name, purpose, boundary, inputs, outputs, platform |
 | `shared_types` | Data structures that cross component boundaries, defined once here. Each type: name, fields with names and types, required vs optional. Interaction contracts reference these by name. Component specs reference Stage 2 for shared types — they do not re-define them. |
 | `interaction_contracts` | One contract per cross-component interaction, with all fields from Phase 3 including fully defined `format` |
 | `cross_cutting_concerns` | One entry per concern, with: name, description, affected_components, owner_component, enforcement_mechanism |
