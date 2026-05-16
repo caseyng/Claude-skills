@@ -1,6 +1,6 @@
 ---
 name: spec-contract-methodology
-version: 1.7.0
+version: 1.8.0
 description: >
   Complete methodology for writing software specifications with enough precision
   that an implementor in any language could produce a behaviourally equivalent system.
@@ -84,18 +84,15 @@ Read this before writing anything. These relationships prevent duplication and g
 
 ## Workflow
 
-1. **Profile first.** Identify which system shapes apply (`references/spec-profiles.md`).
-   The profile table gives the minimum required sections.
-
-2. **Before You Write checklist.** Run the 25-question checklist in
+1. **Before You Write checklist.** Run the 28-question checklist in
    `references/writing-process.md`. Map each answer to its section. Answer with no
    section = gap. Section with no answer = underspecified area.
 
-3. **Write sections in order.** §1 through §23. Each section either has content or an
+2. **Write sections in order.** §1 through §23. Each section either has content or an
    explicit inapplicability statement (one sentence, stating why and what property makes
    it inapplicable — this is a contract, not an omission).
 
-4. **Integrated verification pass.** Run all three tools together in a single pass, in
+3. **Integrated verification pass.** Run all three tools together in a single pass, in
    order. Do not split across sessions — each tool re-grounds on the previous tool's
    findings, and splitting breaks that chain.
 
@@ -121,13 +118,13 @@ Read this before writing anything. These relationships prevent duplication and g
    hand-off when Implementation Readiness is READY (zero blocking gaps) and
    Verification Currency is CURRENT.
 
-5. **Completeness check.** Run the "When the Spec Is Done" checklist in
+4. **Completeness check.** Run the "When the Spec Is Done" checklist in
    `references/writing-process.md`. For every observable behaviour: find where the spec
    covers it.
 
 **Do not hand a spec to a coding LLM unless Implementation Readiness is READY and Verification Currency is CURRENT.**
 
-6. **Post-implementation phase.** After the coding LLM delivers an implementation, run the
+5. **Post-implementation phase.** After the coding LLM delivers an implementation, run the
    Post-Implementation Coverage Audit defined in `references/verification-pipeline.md`. For
    every RFC 2119 MUST contract in the spec, confirm it is present in the implementation or
    record a deviation. Each deviation is classified:
@@ -151,7 +148,7 @@ Read this before writing anything. These relationships prevent duplication and g
 | §17–§23 | `references/sections-17-23.md` | Error Propagation+Caller Exception Types, Observability+What Not Logged+Schema Versioning, Security, Versioning, What Not Specified, Assumptions, Performance |
 | Writing rules + checklists | `references/writing-process.md` | Writing Rules, Before You Write (25 questions), When Done checklist |
 | Stress tests | `references/stress-tests.md` | Appendix A — 8 test vectors |
-| Profiles + guidance | `references/spec-profiles.md` | Appendix B profile table, Deployment Guidance, Future Directions, References |
+| Section requirements | `references/spec-profiles.md` | Section requirements by component type (Required / Conditional / Not applicable) |
 | Verification pipeline | `references/verification-pipeline.md` | Appendix C — integrated three-tool verification pass, status model (readiness/currency), gap report format, design rationale |
 
 ---

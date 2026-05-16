@@ -1,6 +1,6 @@
 ---
 name: system-design
-version: 1.0.0
+version: 1.1.0
 description: >
   Translates an approved Requirements Document into a System Design Document.
   Decomposes the product into components with clear boundaries, defines interaction
@@ -100,9 +100,16 @@ For every pair of components that communicate, define the contract:
 | `to` | Receiving component |
 | `what_is_passed` | Type and content of what is exchanged |
 | `direction` | One-way or request-response |
-| `format` | How it is structured (event, function call, shared data store, message) |
+| `format` | Complete type definition of the data structure being passed (see below) |
 | `owner` | Which component is responsible for the correctness of the data |
 | `on_failure` | What happens if this interaction fails (error returned? event lost? retry?) |
+
+**The `format` field must be a complete type definition** — field names, types, which are
+required vs optional. Do not write "format: MessageEvent." Write out what MessageEvent
+contains. Any data structure that crosses a component boundary is a shared type. Shared
+types are defined here, once, and collected into `shared_types` in the output document.
+Component specs reference Stage 2 for shared type definitions — they do not re-define them.
+A shared type re-defined independently in two component specs will diverge.
 
 Every cross-component interaction must have a contract. An interaction without a contract
 is a latent integration bug — it will be implemented twice, inconsistently.
@@ -168,10 +175,16 @@ Before producing the System Design Document, verify all of the following:
 2. Every component has a non-empty, non-overlapping boundary statement
 3. No two components claim ownership of the same data, state, or external connection
 4. Every cross-component interaction has a defined contract
-5. Every cross-cutting concern has exactly one owner component
-6. Every significant technical decision is recorded with rationale
-7. All infeasible or deferred items are explicitly listed
-8. The platform enrichment checklist is fully addressed
+5. Every `format` field in every interaction contract is a complete type definition — not a type name alone
+6. Every shared data structure is collected in `shared_types` — defined once, referenced by contracts
+7. Every cross-cutting concern has exactly one owner component
+8. Every significant technical decision is recorded with rationale
+9. All infeasible or deferred items are explicitly listed
+10. The platform enrichment checklist is fully addressed
+
+**Stage 2 litmus test (apply last):** Would a component spec writer, reading this design,
+make a wrong structural decision for any component? If yes — that gap is blocking. Resolve it.
+If no remaining question would cause a wrong structural decision, the design is complete.
 
 If any check fails, resolve before producing the document.
 
@@ -187,7 +200,8 @@ The System Design Document — one structured markdown file.
 |---|---|
 | `project_name` | Matches the Requirements Document |
 | `components` | List of components, each with: name, purpose, boundary, inputs, outputs |
-| `interaction_contracts` | One contract per cross-component interaction, with all fields from Phase 3 |
+| `shared_types` | Data structures that cross component boundaries, defined once here. Each type: name, fields with names and types, required vs optional. Interaction contracts reference these by name. Component specs reference Stage 2 for shared types — they do not re-define them. |
+| `interaction_contracts` | One contract per cross-component interaction, with all fields from Phase 3 including fully defined `format` |
 | `cross_cutting_concerns` | One entry per concern, with: name, description, affected_components, owner_component, enforcement_mechanism |
 | `technical_decisions` | One entry per significant decision, with: decision, rationale, alternatives_considered, tradeoffs_accepted |
 | `deferred_items` | One entry per deferred item, with: item, reason, reconsider_when |

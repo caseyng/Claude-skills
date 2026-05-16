@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.8.0 — 2026-05-16
+
+### Changed
+
+- **Removed "Profile first" step from workflow.** Workflow previously opened with a step
+  instructing the user to select their component's shapes from the profile table. This step
+  is now internal to the Stage 3 agent: the orchestrator determines applicable shapes from
+  the System Design Document. Workflow renumbered from 6 steps to 5.
+- **Trimmed spec-profiles.md.** Removed Deployment Guidance, Future Directions, and
+  References sections — these were planning and human-orientation content, not execution
+  material. Kept: section requirements table (R/C/N per section per shape) and two notes.
+  Added pipeline context note: Stage 3 agent determines shapes from System Design Document.
+- **Moved Design Rationale from verification-pipeline.md to README.md.** ~90 lines of
+  "Why..." entries belong in README (human-facing orientation), not in the appendix
+  (LLM execution reference). Verification-pipeline.md is loaded into agent context;
+  rationale that does not affect execution added unnecessary context load.
+- **Updated section index row** for spec-profiles.md: "Profiles + guidance" → "Section requirements".
+- **Updated Tool A question count** in SKILL.md workflow: "26-question" → "28-question"
+  (reflecting Q27 and Q28 added in v1.7.0).
+
+### Rationale
+
+Profile selection was a human-facing step that predated the orchestrator pipeline. In the
+pipeline, the Stage 3 agent receives the System Design Document and determines component
+shapes from the component definition — the user never selects profiles. The verification
+pipeline rationale content was LLM-context-expensive without being execution-guiding.
+
+---
+
 ## 1.7.0 — 2026-04-27
 
 ### Added

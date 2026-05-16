@@ -1,5 +1,40 @@
 # Changelog — system-design
 
+## 1.1.0 — 2026-05-16
+
+### Added
+
+- **`shared_types` field** in output schema. Data structures that cross component boundaries
+  are collected here once and referenced by interaction contracts and component specs.
+  Component specs receive Stage 2 as context — they MUST NOT re-define shared types.
+  A type independently re-defined in two component specs will diverge.
+- **Type definition requirement for interaction contracts.** The `format` field in every
+  interaction contract MUST be a complete type definition (field names, types, required vs
+  optional) — not a type name alone. "format: MessageEvent" is not a format.
+- **Seam checks in completeness checklist** (items 5 and 6): every `format` field must be
+  a complete type definition; every shared data structure must appear in `shared_types`.
+- **Stage 2 litmus test** added as final completeness check: "Would a component spec writer,
+  reading this design, make a wrong structural decision for any component?" Blocking if yes.
+- **Six-phase execution model** clarified: Phase 3 (Interaction Contracts) is now separate
+  from Phase 4 (Cross-Cutting Concerns + Technical Decisions) to emphasize the confirmation
+  gate after component decomposition.
+
+### Changed
+
+- SKILL.md: v1.0.0 → v1.1.0
+- Completeness check expanded from 8 to 10 items + litmus test.
+
+### Rationale
+
+The seam problem: when multiple component specs independently define the same shared data
+structure, the definitions will diverge during implementation. Stage 2 is the only point
+where all component boundaries are visible at once. Defining shared types here, referenced
+by all subsequent stages, closes this failure mode. The Stage 2 litmus test matches the
+universal pipeline pattern: every stage exits when no remaining question would cause the
+next stage's agent to make a materially different output.
+
+---
+
 ## 1.0.0 — 2026-05-16
 
 Initial release.

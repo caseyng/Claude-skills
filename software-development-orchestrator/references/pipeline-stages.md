@@ -63,7 +63,8 @@ Present a summary and reference `output/stage-1-requirements.md`. Human reads th
 | Field | Description |
 |---|---|
 | `components` | List of components. Each component: `name`, `purpose` (one sentence), `boundary` (what it owns and what it does not own), `inputs` (what it receives), `outputs` (what it produces) |
-| `interaction_contracts` | For each pair of components that communicate: `from`, `to`, `what_is_passed`, `format`, `owner` (which component is responsible for the data) |
+| `shared_types` | Data structures that cross component boundaries — defined once here, referenced by interaction contracts and component specs. Each type: name, fields with types, required/optional. |
+| `interaction_contracts` | For each pair of components that communicate: `from`, `to`, `what_is_passed`, `format` (complete type definition referencing shared_types), `owner` (which component is responsible for the data), `on_failure` |
 | `cross_cutting_concerns` | Concerns that span multiple components: `name`, `description`, `affected_components`, `owner_component` (which component is responsible for enforcing it). Includes: error propagation strategy, logging, security boundary, data persistence ownership, observability. |
 | `technical_decisions` | Key architecture decisions: `decision`, `rationale`, `alternatives_considered`, `tradeoffs_accepted` |
 | `deferred_items` | Things explicitly not built in this version: `item`, `reason`, `reconsider_when` |
