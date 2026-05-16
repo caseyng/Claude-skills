@@ -89,10 +89,12 @@
 ### Skills status after this release
 
 Exists: `requirements-engineering`, `system-design`, `spec-contract-methodology`,
-`android-engineering`, `python-engineering`, `code-integrity-guardrail`, `spec-driven-testing`,
-`spec-audit`, `integration-testing`, `session-handoff`, `engineering-baseline` (this skill)
+`android-engineering`, `python-engineering`, `go-engineering`, `code-integrity-guardrail`,
+`spec-driven-testing`, `spec-audit`, `integration-testing`, `spec-driver`, `session-handoff`,
+`engineering-baseline` (this skill)
 
-Missing (will emit gap notice): none — all six stages have skills
+Missing (will emit gap notice at enterprise stages): `ssat`, `vapt`, `stability-testing`
+Missing (platform skills): `typescript-engineering`, `nodejs-engineering`, `ios-engineering`, `rust-engineering`
 
 ---
 

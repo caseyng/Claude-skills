@@ -128,8 +128,9 @@ Present a summary and reference `output/stage-2-system-design.md`. Human reads t
 
 ## Stage 3 — Component Specification
 
-**Skills:** `spec-contract-methodology` + `engineering-baseline` — EXISTS
-- `spec-contract-methodology`: EXISTS
+**Skills:** `spec-driver` + `spec-contract-methodology` + `engineering-baseline` — EXISTS
+- `spec-driver`: EXISTS
+- `spec-contract-methodology`: EXISTS (used by Drafter and Critic within spec-driver)
 - `engineering-baseline`: EXISTS (owned by this orchestrator, at `references/engineering-baseline.md`)
 
 **Parallelism:** Parallel per component
@@ -138,17 +139,33 @@ Present a summary and reference `output/stage-2-system-design.md`. Human reads t
 **Decision log (per component):** `output/decisions-stage3-[component-name].md`
 **State file (per component):** `output/state-stage3-[component-name].md`
 
-**Context package per parallel agent:**
+**Context package per parallel agent (each agent is a spec-driver instance):**
 - Full System Design Document from Stage 2 (`output/stage-2-system-design.md`)
 - This component's definition extracted from the System Design Document
-- The `spec-contract-methodology` skill
+- The `spec-driver` skill
+- The `spec-contract-methodology` skill (passed through to spec-driver's sub-agents)
 - `references/engineering-baseline.md` — mandatory, included in every package
-- Iteration > 1: prior artifact + decision log for this component
+- Iteration > 1 (orchestrator-level re-run): prior final spec + decision log for this component
+
+**Internal architecture (managed by spec-driver, not the orchestrator):**
+
+Each spec-driver instance runs up to 3 Drafter→Critic→Judge cycles internally:
+- **Drafter**: writes §1–§23 draft. Iteration 2+: receives prior draft + Judge's blocking
+  gap instructions + decision log as constraints.
+- **Critic**: runs Tools A+B+C (completeness sweep, stress tests, structural verification)
+  against the draft. Fresh agent — no attachment to what the Drafter wrote.
+- **Judge**: classifies each gap as blocking/non-blocking using the single test. Produces
+  READY verdict or concrete fix instructions for the next Drafter.
+
+On READY: spec-driver writes the final spec to the output file path and terminates.
+On 3 cycles without READY: spec-driver writes ESCALATED status, records the persistent
+contention in the decision log, and terminates without writing the final spec.
+The orchestrator escalates to the human per the Escalation Protocol.
 
 **What to record in decision log:** Which component shape(s) apply and why, §2b structural
-decisions and alternatives rejected, failure mode naming choices, blocking gaps found by the
-verification pass (Tools A+B+C) and how each was resolved, non-blocking gaps and why they
-do not block handoff, any provisional decisions flagged in the spec.
+decisions and alternatives rejected, failure mode naming choices, blocking gaps and how each
+was resolved, non-blocking gaps and why they do not block handoff, provisional FLAGS and
+their resolution, Judge's verdict per cycle with the test applied per gap.
 
 Each agent drives its component to a completed §1-§23 specification using `assisted-epistemology`
 to iterate until zero blocking gaps remain. The engineering baseline defines the floor — anything

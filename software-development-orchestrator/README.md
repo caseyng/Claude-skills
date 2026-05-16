@@ -40,7 +40,7 @@ production-grade for regulated environments without Stages 7–9.
 |---|---|---|---|
 | 1 | Requirements Engineering | `requirements-engineering` | EXISTS |
 | 2 | System Design | `system-design` | EXISTS |
-| 3 | Component Specification | `spec-contract-methodology` | EXISTS |
+| 3 | Component Specification | `spec-driver` + `spec-contract-methodology` | EXISTS |
 | 4 | Implementation | `[platform]-engineering` + `code-integrity-guardrail` | EXISTS (android, go, python) |
 | 5 | Component Testing | `spec-driven-testing` + `spec-audit` | EXISTS |
 | 6 | Integration Testing | `integration-testing` | EXISTS |
@@ -135,10 +135,7 @@ required before commissioning.
 `ios-engineering`, `rust-engineering`. Each MISSING skill emits a gap notice at Stage 2
 feasibility check (warn) and Stage 4 execution (block). Build the skill to unblock.
 
-**spec-driver (Stage 3 internal architecture):** Stage 3 currently runs as a single
-agent per component. The production-grade design is three separate agents: Drafter
-(writes §1–§23), Critic (runs verification Tools A+B+C — a fresh agent, not the one
-that wrote the spec), and Judge (classifies gaps, decides READY or return). This
-separation prevents bias accumulation and context pressure in long specifications.
-The `spec-driver` skill, which orchestrates this three-agent flow, is the next
-significant skill to build.
+**Stage 3 internal architecture:** Each Stage 3 component runs via `spec-driver`, which
+orchestrates a Drafter→Critic→Judge cycle (up to 3 cycles) internally. The Critic is a
+fresh agent that did not write the spec — preventing bias. The Judge applies the single
+test independently to classify gaps. See `spec-driver/SKILL.md` for the full protocol.
