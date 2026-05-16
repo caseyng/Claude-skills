@@ -231,7 +231,7 @@ Each component agent runs three sub-tasks in parallel:
 
 ## Stage 6 — Integration Testing
 
-**Skill:** `integration-testing` — MISSING (approach not yet decided)
+**Skill:** `integration-testing` — EXISTS
 **Parallelism:** Sequential — integration tests the assembled whole
 
 **Output file path:** `output/stage-6-integration.md`
