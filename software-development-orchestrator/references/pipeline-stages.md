@@ -2,6 +2,17 @@
 
 Each stage defines: inputs, skill status, parallelism, output schema, human gate, and dependencies.
 
+**Iteration context:** For any iteration after the first, the context package MUST include
+the prior iteration's output artifact and the stage's decision log. The agent reads the
+decision log before doing any work — OPTIONS REJECTED entries are constraints, not starting
+points. See `decision-log-format.md` for the agent's reading protocol.
+
+**Decision log:** Agent writes iteration entries; orchestrator appends gate outcomes.
+See `decision-log-format.md` for format.
+
+**Iteration cap:** 3 orchestrator-level re-spawns per stage/component. On cap breach,
+escalate per the Escalation Protocol in SKILL.md.
+
 **Skill status:** EXISTS = skill is available and can be invoked. MISSING = no skill exists;
 pipeline pauses and emits a gap notice when this stage is reached.
 
@@ -14,8 +25,14 @@ pipeline pauses and emits a gap notice when this stage is reached.
 
 **Inputs:**
 - Raw human intent (unstructured natural language string)
+- Iteration > 1: prior artifact (`output/stage-1-requirements.md`) + decision log
 
 **Output file path:** `output/stage-1-requirements.md`
+**Decision log:** `output/decisions-stage1.md`
+
+**What to record in decision log:** Feature prioritisation choices, scope inclusions/exclusions
+with rationale, surfaced concerns that the human did not raise, open questions and why they
+require human resolution rather than a provisional answer.
 
 **Output schema — Requirements Document:**
 
@@ -55,8 +72,16 @@ Present a summary and reference `output/stage-1-requirements.md`. Human reads th
 
 **Inputs:**
 - Approved Requirements Document from Stage 1 (`output/stage-1-requirements.md`)
+- Iteration > 1: prior artifact (`output/stage-2-system-design.md`) + decision log
 
 **Output file path:** `output/stage-2-system-design.md`
+**Decision log:** `output/decisions-stage2.md`
+
+**What to record in decision log:** Component decomposition rationale and alternatives
+rejected (decomposition is the highest-leverage decision — rejected decompositions MUST
+be recorded to prevent re-litigation), shared type definitions and why they belong in
+`shared_types` vs internal to a component, interaction contract `on_failure` choices,
+technical decisions with alternatives considered.
 
 **Output schema — System Design Document:**
 
@@ -90,21 +115,27 @@ Present a summary and reference `output/stage-2-system-design.md`. Human reads t
 
 ## Stage 3 — Component Specification
 
-**Skills:** `assisted-epistemology` + `spec-contract-methodology` + `engineering-baseline` — PARTIALLY EXISTS
+**Skills:** `spec-contract-methodology` + `engineering-baseline` — EXISTS
 - `spec-contract-methodology`: EXISTS
-- `assisted-epistemology`: EXISTS (spec at v0.1-draft, not yet verified)
 - `engineering-baseline`: EXISTS (owned by this orchestrator, at `references/engineering-baseline.md`)
 
 **Parallelism:** Parallel per component
 
 **Output file path (per component):** `output/stage-3-spec-[component-name].md`
+**Decision log (per component):** `output/decisions-stage3-[component-name].md`
+**State file (per component):** `output/state-stage3-[component-name].md`
 
 **Context package per parallel agent:**
 - Full System Design Document from Stage 2 (`output/stage-2-system-design.md`)
 - This component's definition extracted from the System Design Document
 - The `spec-contract-methodology` skill
-- The `assisted-epistemology` skill
 - `references/engineering-baseline.md` — mandatory, included in every package
+- Iteration > 1: prior artifact + decision log for this component
+
+**What to record in decision log:** Which component shape(s) apply and why, §2b structural
+decisions and alternatives rejected, failure mode naming choices, blocking gaps found by the
+verification pass (Tools A+B+C) and how each was resolved, non-blocking gaps and why they
+do not block handoff, any provisional decisions flagged in the spec.
 
 Each agent drives its component to a completed §1-§23 specification using `assisted-epistemology`
 to iterate until zero blocking gaps remain. The engineering baseline defines the floor — anything
@@ -150,12 +181,20 @@ Requirements Document.
 **Parallelism:** Parallel per component
 
 **Output file path (per component):** `output/stage-4-impl-[component-name].md`
+**Decision log (per component):** `output/decisions-stage4-[component-name].md`
+**State file (per component):** `output/state-stage4-[component-name].md`
 
 **Context package per parallel agent:**
 - Full System Design Document from Stage 2 (`output/stage-2-system-design.md`)
 - This component's specification from Stage 3 (`output/stage-3-spec-[component-name].md`)
 - The appropriate platform engineering skill for this component's platform
 - The `code-integrity-guardrail` skill
+- Iteration > 1: prior artifact (`output/stage-4-impl-[component-name].md`) + decision log
+
+**What to record in decision log:** `SPEC_ERROR_REVEALED` deviations found and how resolved
+(these require spec amendment — record both the deviation and the spec change), significant
+implementation decisions not specified in the spec, guardrail findings and how each was
+resolved, any DI or structural choices made that the spec left to the implementor.
 
 **Output schema — Implementation (per component):**
 
@@ -190,6 +229,8 @@ Requirements Document.
 **Parallelism:** Parallel per component. Within each component, three sub-tasks run in parallel.
 
 **Output file path (per component):** `output/stage-5-test-[component-name].md`
+**Decision log (per component):** `output/decisions-stage5-[component-name].md`
+**State file (per component):** `output/state-stage5-[component-name].md`
 
 **Context package per parallel agent:**
 - This component's source files from Stage 4 (paths listed in `output/stage-4-impl-[component-name].md`)
@@ -197,6 +238,14 @@ Requirements Document.
 - The `spec-driven-testing` skill
 - The `code-integrity-guardrail` skill
 - The `spec-audit` skill (or gap notice if MISSING — the agent records SKIPPED for that sub-task)
+- Iteration > 1: prior test results artifact + decision log
+
+**What to record in decision log:** Spec compliance deviations found and how routed
+(IMPLEMENTATION_DRIFT vs SPEC_ERROR_REVEALED), behavioral test failures and whether they
+route to stage 4 or stage 3, lint findings and how resolved. Stage 5 rarely iterates at the
+orchestrator level — failures typically route back to stage 4 rather than producing a new
+stage 5 iteration. If stage 5 does iterate, record why the prior routing decision was
+insufficient.
 
 Each component agent runs three sub-tasks in parallel:
 
@@ -236,10 +285,17 @@ Each component agent runs three sub-tasks in parallel:
 **Parallelism:** Sequential — integration tests the assembled whole
 
 **Output file path:** `output/stage-6-integration.md`
+**Decision log:** `output/decisions-stage6.md`
 
 **Context package:**
 - All component source files from Stage 4
 - System Design Document from Stage 2 (`output/stage-2-system-design.md`) — interaction contracts define what integration tests verify
+- Iteration > 1: prior test results artifact + decision log
+
+**What to record in decision log:** Contract violations found and the routing decision
+(which component is the fix target and why), MANUAL_REQUIRED procedures written and why
+they cannot be automated, any contracts that produced ambiguous results and how the
+ambiguity was resolved.
 
 **What integration testing verifies:**
 Each interaction contract in the System Design Document is a test target.

@@ -1,5 +1,59 @@
 # Changelog — software-development-orchestrator
 
+## 1.2.0 — 2026-05-16
+
+### Added
+
+- **Decision logs** — each stage and component now produces a decision log alongside its
+  output artifact. Format defined in `references/decision-log-format.md`. Two-writer protocol:
+  agent writes iteration entries, orchestrator appends gate outcomes. Parallel agents own their
+  own files — never concurrent writes to the same decision log.
+
+- **Iteration context feeding** — from iteration 2 onward, the agent context package includes
+  the prior iteration artifact and the decision log. OPTIONS REJECTED entries in the log are
+  treated as constraints by the next agent, not starting points. This is the primary mechanism
+  preventing flip-flop across iterations.
+
+- **Escalation Protocol** — when a stage/component reaches the iteration cap (3) without
+  converging, the orchestrator reads the decision log, identifies the persistent contention
+  point, and presents an Escalation Gate to the human. The human chooses between named options.
+  Their decision becomes a hard constraint for one final iteration.
+
+- **Per-component state files** — `output/state-stage[N]-[component].md`. Written by the
+  orchestrator (not agents) after each agent completion. Tracks: status, iteration count,
+  artifact path, decision log path, blocking issues, last gate feedback.
+
+- **Updated `pipeline-state.md` schema** — now includes iteration counts per stage/component,
+  decision log references, and an Escalated Items section for stuck components. This file is
+  the human's query surface — readable at any time without interrupting the orchestrator.
+
+- **Iteration count in human gate presentation** — every gate now shows "Iteration: N of 3"
+  so the human knows how many attempts have been made and how close to escalation the stage is.
+
+- **`system-design`, `spec-audit`, `integration-testing` status updated** — built in prior
+  cycle; status updated from MISSING to EXISTS.
+
+### Changed
+
+- Execution Protocol: steps 4–10 updated to reflect iteration context, decision log protocol,
+  state file update cadence, and escalation path.
+- State Management section updated: two-level state, update cadence, resume protocol.
+- `references/pipeline-stages.md`: every stage now defines decision log file path, state file
+  path (parallel stages), what to record in the decision log, and iteration context package.
+- `references/pipeline-state.md`: fully rewritten with two-level schema (per-component + pipeline).
+- `assisted-epistemology` removed from Stage 3 skills list — superseded by the spec-contract
+  methodology's internal Drafter→Critic→Judge loop and the orchestrator-level iteration protocol.
+
+### Skills status after this release
+
+Exists: `requirements-engineering`, `system-design`, `spec-contract-methodology`,
+`android-engineering`, `python-engineering`, `code-integrity-guardrail`, `spec-driven-testing`,
+`spec-audit`, `integration-testing`, `session-handoff`, `engineering-baseline` (this skill)
+
+Missing (will emit gap notice): none — all six stages have skills
+
+---
+
 ## 1.1.0 — 2026-05-16
 
 ### Changes

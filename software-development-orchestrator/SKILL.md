@@ -1,6 +1,6 @@
 ---
 name: software-development-orchestrator
-version: 1.1.0
+version: 1.2.0
 description: >
   Drives the full software development lifecycle from requirements to commissioning.
   Manages human review gates at each stage, flags missing skills explicitly,
@@ -46,20 +46,28 @@ For each stage, in order:
    - If EXISTS → continue
 4. Execute the stage:
    - Spawn one agent per unit of work (one for sequential stages, one per component for parallel stages)
-   - Each agent receives a complete context package, writes its output to the defined file path (see `references/pipeline-stages.md`), and terminates
-   - Agents do not communicate with each other — if a package is incomplete, the agent cannot complete its work
+   - First iteration: agent receives the standard context package for this stage
+   - Subsequent iterations: agent receives the standard context package + prior iteration artifact + decision log for this stage/component
+   - Each agent writes: its output artifact + its iteration entry in the decision log
+   - Agents do not communicate with each other — parallel agents each own their own decision log and output files
    - For parallel stages: collect all output file paths before proceeding to validation
 5. Validate (before the human sees anything):
    - Read the validation fields from each output file — not full content
    - Apply the stage's validation criteria from `references/pipeline-stages.md`
-   - If validation fails: spawn a new agent with the prior output file + the specific failure + correction instructions. Repeat until validation passes. Do not surface failed output to the human.
-6. Present the human gate review package (see Human Gate Format below):
-   - Include a summary of what was produced and that validation passed
-   - Reference the output file paths — the human reads the files directly
+   - If validation fails and iteration count < cap (3): spawn a new agent with prior output + decision log + specific failure + correction instructions. Increment iteration count. Re-validate.
+   - If validation fails and iteration count = cap: escalate (see Escalation Protocol below). Do not spawn another agent.
+   - Do not surface failed output to the human.
+6. Update per-component state files immediately after validation (before gate presentation). Merge into `pipeline-state.md`.
+7. Present the human gate review package (see Human Gate Format below):
+   - Include a summary of what was produced, iteration count, and that validation passed
+   - Reference the output file paths and decision log path — the human reads the files directly
    - Do not reproduce full artifact content in the gate presentation
-7. Record the gate decision and update the state document
-8. On APPROVE: advance to next stage
-9. On REJECT with feedback: spawn a new agent per rejected item with the prior output file + the specific feedback. Re-validate, then re-present. Items the human approved in a prior presentation do not re-run.
+8. Append the gate outcome to the decision log. Update the state document.
+9. On APPROVE: advance to next stage
+10. On REJECT with feedback:
+    - Record human feedback in the decision log's Gate Decision block
+    - If iteration count < cap (3): spawn a new agent per rejected item with prior output + decision log + rejection feedback. Re-validate, then re-present. Previously approved items do not re-run.
+    - If iteration count = cap: escalate (see Escalation Protocol below).
 
 ---
 
@@ -71,11 +79,60 @@ Agents write to files. The orchestrator stays lean.
 
 **Orchestrator reads:** Validation fields only — never full artifact content. Full content is consumed by the human at the gate, and by downstream agents as part of their context package.
 
-**Context packages:** Each agent receives every file it needs, listed explicitly in the stage definition. Nothing is implicit. If a file is not in the package, the agent does not have it.
+**Context packages:** Each agent receives every file it needs, listed explicitly in the stage definition. For iterations after the first, the context package also includes the prior iteration artifact and the decision log. Nothing is implicit. If a file is not in the package, the agent does not have it.
 
-**Rework loops:** When a stage is rejected — by validation or by human — a new agent is spawned. That agent receives: the prior output file, the specific rejection reasons, and correction instructions. It does not receive the full reasoning of the prior agent.
+**Rework loops:** When a stage is rejected — by validation or by human — a new agent is spawned. That agent receives: the prior output file, the decision log, the specific rejection reasons, and correction instructions. The decision log is the mechanism that prevents the new agent from re-litigating already-closed decisions.
 
-**State document:** `pipeline-state.md` records file paths and statuses, not content. It is the orchestrator's complete view of the pipeline. On resume, the orchestrator loads `pipeline-state.md` and continues from the recorded state — no reconstruction needed.
+**Decision logs:** Each iterating stage produces a decision log alongside its output artifact. Format: `references/decision-log-format.md`. Two writers — the agent writes iteration entries; the orchestrator appends gate outcomes. Always sequential, never concurrent. Parallel agents each own their own decision log file.
+
+**State files:** Two levels of state are maintained. Per-component state files track iteration count, current artifact, and blocking issues for each unit of parallel work. The pipeline-level `pipeline-state.md` is the merged human-readable view, updated after every agent completion. Format: `references/pipeline-state.md`. The pipeline-state.md is the human's query surface — reading it answers "where are things" without interrogating the orchestrator.
+
+**State document:** `pipeline-state.md` records file paths, statuses, iteration counts, and decision log references. It is the orchestrator's complete view of the pipeline. On resume, load it and continue from the recorded state.
+
+---
+
+## Escalation Protocol
+
+When a stage/component reaches the iteration cap (3) without passing validation or receiving
+human approval, do not spawn another agent. Escalate.
+
+**How to escalate:**
+
+1. Read the complete decision log for this stage/component
+2. Identify the persistent contention: the specific question or decision that has not converged
+   across all iterations — the one that each agent re-opens or that the human keeps rejecting
+3. Identify the competing positions: what position does each iteration land on, and what is the
+   reasoning in each case
+4. Update the state file for this component: `Status: ESCALATED`
+5. Update `pipeline-state.md`
+6. Present the Escalation Gate to the human:
+
+```
+════════════════════════════════════════════════════
+ESCALATION — Stage [N] — [Component Name]
+════════════════════════════════════════════════════
+
+3 iterations attempted without convergence.
+
+Persistent contention:
+[One paragraph: the specific question or decision that has not resolved.
+ State both positions without editorializing.]
+
+Decision log: [path]
+Latest artifact: [path]
+
+── Options ────────────────────────────────────────
+A: [option A — what it means, what it resolves, what it requires]
+B: [option B — what it means, what it resolves, what it requires]
+[C: if applicable]
+
+── Decision ───────────────────────────────────────
+Choose an option above, or provide your own direction.
+I will resume this component with your decision as a hard constraint.
+════════════════════════════════════════════════════
+```
+
+7. On human decision: record the decision in the decision log (Escalation Entry → Human decision field). Spawn one final iteration with the human decision as an explicit constraint in the context package. If this iteration also fails, surface the output directly to the human — do not escalate again.
 
 ---
 
@@ -122,11 +179,14 @@ STAGE [N] — [Stage Name] — READY FOR REVIEW
 
 Completed:
 [One or two sentences on what was produced and why it matters.]
+Iteration: [N of 3] (first attempt | rework after [feedback summary])
 
 ── Artifacts ──────────────────────────────────────
 [Summary of what was produced — one or two sentences per artifact.
 File references for the human to read directly.
 Do not reproduce full artifact content here — reference the files.]
+
+Decision log: [path] — records all decisions made, options rejected, and prior gate feedback
 
 ── Decision ───────────────────────────────────────
 APPROVE  → I advance to Stage [N+1]: [one sentence on what that stage does]
@@ -166,12 +226,26 @@ The component's testing agent collects all three results before reporting to the
 
 ## State Management
 
-The pipeline state document records progress across sessions. Write it after every stage completes
-and after every human gate decision. On resume, read it before doing anything else.
+Two levels of state. Both written to the project's working directory.
 
-Write the state document to `pipeline-state.md` in the project's working directory.
+**Per-component state files** (parallel stages only): One file per component per stage.
+Path pattern: `output/state-stage[N]-[component-name].md`. Written by the orchestrator after
+each agent completion. Never written by agents — the orchestrator owns state.
 
-State document schema: `references/pipeline-state.md`
+**Pipeline state** (`pipeline-state.md`): The merged human-readable view. Written after every
+agent completion and after every human gate decision. This is the human's query surface —
+the human reads it to understand pipeline status without interrupting the orchestrator.
+
+**Update cadence:**
+- After every agent completes (before gate presentation): update the component's state file + merge into `pipeline-state.md`
+- After every gate decision: append gate outcome to decision log + update `pipeline-state.md`
+- On resume: read `pipeline-state.md` first, then the decision logs for any in-progress stages
+
+**On resume:** Load `pipeline-state.md`. For any stage/component that is `in_progress` or
+`awaiting_gate`, read its decision log to reconstruct what was being worked on. Do not
+reconstruct from artifact content — the decision log is authoritative for iteration state.
+
+State schemas: `references/pipeline-state.md`
 
 ---
 
