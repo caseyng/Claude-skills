@@ -218,18 +218,29 @@ resolved, any DI or structural choices made that the spec left to the implemento
 |---|---|
 | `component_name` | Matches the name in Stage 3 |
 | `source_files` | Implemented source file paths |
+| `build_result` | PASS (code compiles/builds) or FAIL with error output. Compilation is verified before static analysis. |
 | `guardrail_result` | PASS or list of findings |
-| `deviations` | Any `IMPLEMENTATION_DRIFT` or `SPEC_ERROR_REVEALED` deviations from the component spec |
+| `deviations` | List of deviations, each with type: `IMPLEMENTATION_DRIFT`, `SPEC_ERROR_REVEALED`, or `UPSTREAM_REDESIGN_REQUIRED` |
+
+**Deviation types:**
+
+- `IMPLEMENTATION_DRIFT` — spec is correct; implementation does not satisfy the contract. Agent fixes before submitting output.
+- `SPEC_ERROR_REVEALED` — implementation reveals a spec error (contradiction, missing clause, wrong requirement). Routes to Stage 3 for spec amendment.
+- `UPSTREAM_REDESIGN_REQUIRED` — a shared type defined in Stage 2 cannot be implemented as specified on this platform. Routes to Stage 2. This is a structural failure: the design must be revisited before implementation can proceed.
 
 **Validation criteria (orchestrator checks before human gate):**
-- `guardrail_result` is PASS for every component (IMPLEMENTATION_DRIFT items must have been resolved and re-run before presenting)
+- `build_result` is PASS for every component
+- `guardrail_result` is PASS for every component (`IMPLEMENTATION_DRIFT` items resolved before submission)
 - Every component name matches Stage 3
 - All source file paths listed exist
+- No unresolved `UPSTREAM_REDESIGN_REQUIRED` deviations
 
 **Human gate:**
-- **No `SPEC_ERROR_REVEALED` deviations, guardrail PASS** → advance automatically to Stage 5. No human input needed.
-- **`SPEC_ERROR_REVEALED` deviations** → present to human with file references. Human decides: amend spec (returns to Stage 3 for that component) or confirm implementation is correct and spec needs correction.
+- **No `SPEC_ERROR_REVEALED` or `UPSTREAM_REDESIGN_REQUIRED` deviations, build PASS, guardrail PASS** → advance automatically to Stage 5. No human input needed.
+- **`SPEC_ERROR_REVEALED` deviations** → present to human with file references. Human decides: amend spec (returns to Stage 3 for that component) or confirm implementation is correct and spec needs amendment.
+- **`UPSTREAM_REDESIGN_REQUIRED` deviations** → present to human. Describe what was attempted and why the shared type cannot be implemented. Routes to Stage 2 — the shared type must be redesigned. This invalidates Stage 3 and Stage 4 work for all components that use the affected shared type. Human confirms scope of impact before returning to Stage 2.
 - **`IMPLEMENTATION_DRIFT`** → agent fixes and re-runs guardrail before output is written. Does not surface to human unless re-run also fails.
+- **`build_result` FAIL** → not surfaced to human. Treated as a validation failure — agent spawned with build error output as context. If build fails after 3 attempts, escalate per Escalation Protocol.
 
 **Dependencies:** Stage 3 complete and approved.
 
@@ -277,13 +288,28 @@ Each component agent runs three sub-tasks in parallel:
 |---|---|
 | `component_name` | Matches Stage 4 |
 | `lint_result` | PASS or issues list |
-| `behavioral_test_result` | Test count, pass count, fail count, spec gaps identified by Agent 2 |
+| `behavioral_test_result` | Test count, pass count, fail count, spec gaps identified |
+| `test_execution_artifact` | File path to raw test runner output. Required. Cannot be substituted with a claim — the file must exist and contain runner syntax. |
 | `spec_compliance_result` | COMPLETE or deviation list (when spec-audit exists); SKIPPED if missing |
 
+**Test execution artifact requirement:**
+
+The agent MUST actually run the test suite and write the raw output to a file. Claims of test passage without this artifact are rejected. The artifact is the unfakeable evidence that tests ran.
+
+| Platform | Command | Artifact path | Evidence pattern |
+|---|---|---|---|
+| Go | `go test -v ./... -count=1 2>&1` | `output/test-output-[component].txt` | Lines containing `--- PASS:` or `--- FAIL:` |
+| Android (unit) | `./gradlew test` | `app/build/reports/tests/testDebugUnitTest/` | JUnit XML files at this path |
+| Android (instrumentation) | `./gradlew connectedAndroidTest` | `app/build/outputs/androidTest-results/` | JUnit XML files at this path |
+| Python | `pytest -v 2>&1` | `output/test-output-[component].txt` | Lines containing `PASSED` or `FAILED` |
+
 **Validation criteria (orchestrator checks before human gate):**
-- Every component has all three sub-task fields populated (SKIPPED counts as populated for spec-audit while missing)
+- Every component has all four fields populated (`SKIPPED` counts for spec-audit only)
 - Every component name matches Stage 4
 - `lint_result` and `behavioral_test_result` present for every component
+- `test_execution_artifact` file exists and is non-empty for every component
+- `test_execution_artifact` contains platform-appropriate runner syntax (see table above)
+- If `test_execution_artifact` is missing or empty: treated as a validation failure. Orchestrator does not surface this to the human — re-spawns the agent with explicit instruction to run the tests and capture output.
 
 **Human gate:**
 - **All sub-tasks pass (or SKIPPED)** → advance automatically to Stage 6. No human input needed.
@@ -338,10 +364,131 @@ no mocks, no fakes, real implementations communicating.
 
 ---
 
-## Commissioning
+## Commissioning (Consumer Profile)
 
 Not a stage — a milestone. The product works. Human accepts delivery.
-Reached when Stage 6 passes and human approves the integration test results.
+
+**Consumer profile:** Reached when Stage 6 passes and human approves the integration test results.
+
+**Enterprise profile:** Commissioning is reached only after Stages 7, 8, and 9 all pass. Stage 6 approval advances to Stage 7, not directly to commissioning.
+
+**Custom profile:** Human specifies which of Stages 7–9 apply at pipeline start. Commissioning is reached when all selected stages pass.
+
+---
+
+## Stage 7 — System Security Acceptance Testing (SSAT)
+
+**Skill:** `ssat` — MISSING
+**Parallelism:** Sequential — tests the assembled system
+**Applies to:** Enterprise and custom profiles only
+
+**Inputs:**
+- All component source files from Stage 4
+- System Design Document from Stage 2 (security boundary, auth components, data ownership)
+- Component specs from Stage 3 (§19 Security Properties, §22 Assumptions on caller trust)
+
+**What SSAT verifies:**
+Each security control declared in the spec is tested to confirm it functions as designed:
+- Authentication: unauthenticated requests are rejected at the declared boundary
+- Authorisation: requests with insufficient privilege are denied
+- Input validation: boundary conditions in §8 are enforced against hostile input
+- Encryption: data at rest and in transit matches §19 contracts
+- Session management: session expiry, token invalidation, re-authentication triggers
+- Audit logging: §18 events are emitted correctly for all security-relevant actions
+
+**Output schema:**
+
+| Field | Description |
+|---|---|
+| `controls_tested` | List of security controls tested, each with: source (§N), result (PASS/FAIL/MANUAL_REQUIRED) |
+| `control_failures` | Detailed description of any failed controls |
+| `manual_procedures` | Written test procedures for controls requiring human execution |
+
+**Human gate:**
+- **All controls pass (or MANUAL_REQUIRED with procedures)** → advance to Stage 8
+- **Failures** → route to component responsible for the failed control (Stage 4 or Stage 3 if contract was wrong)
+
+**Dependencies:** Stage 6 complete and approved.
+
+---
+
+## Stage 8 — Vulnerability Assessment and Penetration Testing (VAPT)
+
+**Skill:** `vapt` — MISSING
+**Parallelism:** Sequential
+**Applies to:** Enterprise and custom profiles only
+
+**Inputs:**
+- Running system (deployed from Stage 4 artifacts)
+- System Design Document from Stage 2 (attack surface, trust boundaries, external dependencies)
+- SSAT results from Stage 7
+
+**What VAPT verifies:**
+An external attacker cannot breach the system via known vulnerability classes:
+- Automated vulnerability scanning (OWASP Top 10 surface coverage)
+- Injection vectors: SQL, command, LDAP, XML
+- Authentication bypass: brute force thresholds, credential stuffing surface
+- Authorisation bypass: IDOR, privilege escalation paths
+- Configuration weaknesses: exposed debug endpoints, default credentials, verbose errors
+- Dependency vulnerabilities: known CVEs in production dependencies
+- Network exposure: open ports beyond declared surface
+
+**Note:** VAPT requires a running deployment and specialised tooling (scanners, proxies). The
+skill orchestrates the process and integrates results. Skilled human review is required for
+findings classification — the skill does not replace a security professional.
+
+**Output schema:**
+
+| Field | Description |
+|---|---|
+| `findings` | List of findings, each with: CVE/class, severity (CRITICAL/HIGH/MEDIUM/LOW/INFO), affected component, evidence |
+| `remediation_required` | Findings classified as blocking: CRITICAL and HIGH |
+| `accepted_risks` | LOW and INFO findings accepted by the human with rationale |
+
+**Human gate:**
+- **Zero CRITICAL or HIGH findings** → advance to Stage 9
+- **CRITICAL or HIGH findings** → route to Stage 4 for remediation. Re-run Stage 8 after fix.
+
+**Dependencies:** Stage 7 complete and approved. System must be deployed and accessible for scanning.
+
+---
+
+## Stage 9 — Stability Run
+
+**Skill:** `stability-testing` — MISSING
+**Parallelism:** Sequential
+**Applies to:** Enterprise profile, custom profile, or any consumer project where §23 Performance Contracts must be verified
+
+**Inputs:**
+- Running system (same deployment as Stage 8, or fresh deployment)
+- Component specs from Stage 3 (§23 Performance Contracts)
+- System Design Document from Stage 2 (scaling model, deployment unit)
+
+**What the stability run verifies:**
+- **Load test:** system meets §23 performance contracts (response time, throughput) at expected peak load
+- **Stress test:** system degrades gracefully beyond peak load — no data corruption, clean recovery
+- **Soak test:** system is stable under sustained load over time — no memory leaks, connection exhaustion, log overflow
+- **Recovery test:** system recovers correctly from failure injection (process kill, database disconnect, dependency timeout)
+
+**Output schema:**
+
+| Field | Description |
+|---|---|
+| `load_test_result` | PASS/FAIL per §23 contract tested, with measured values vs. targets |
+| `stress_test_result` | Degradation behaviour at 2× and 5× peak load |
+| `soak_test_result` | Resource consumption trends over soak duration |
+| `recovery_test_result` | Recovery time and data integrity after each failure injection |
+| `contracts_verified` | Which §23 Performance Contracts were verified and result |
+
+**Human gate:**
+- **All §23 contracts satisfied, no resource leaks, recovery within bounds** → advance to Commissioning
+- **Failures** → route to Stage 4 for performance or stability fixes. Re-run affected test types only.
+
+**Note on selective use:** Stage 9 can be run after Stage 6 for consumer projects where performance
+contracts are critical, without running Stages 7 and 8. The pipeline profile determines this.
+
+**Dependencies:** Stage 6 complete and approved. System must be deployed under conditions
+representative of production (not localhost, not debug build).
 
 ---
 

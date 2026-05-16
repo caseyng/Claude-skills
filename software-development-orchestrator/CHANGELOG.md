@@ -1,5 +1,47 @@
 # Changelog — software-development-orchestrator
 
+## 1.3.0 — 2026-05-16
+
+### Added
+
+- **Pipeline profiles** — Consumer (stages 1–6), Enterprise (stages 1–9), Custom (selective).
+  Orchestrator asks which profile applies at fresh start. Profile recorded in pipeline-state.md
+  and locked for the run. Commissioning gate depends on profile.
+
+- **Stages 7, 8, 9** defined in `pipeline-stages.md` with MISSING skill status:
+  - Stage 7: SSAT — System Security Acceptance Testing. Tests each §19 security control.
+  - Stage 8: VAPT — Vulnerability Assessment and Penetration Testing. External attacker surface.
+  - Stage 9: Stability Run — load, stress, soak, and recovery tests against §23 contracts.
+  Gap notices emitted when reached without skills. For consumer profiles, stages 1–6 → commissioning.
+  For enterprise profiles, all 9 stages required.
+
+- **`UPSTREAM_REDESIGN_REQUIRED` deviation type** (Stage 4). A shared type defined in Stage 2
+  cannot be implemented as specified on the target platform. Routes to Stage 2 — not Stage 3 or
+  Stage 4 rework. Invalidates Stage 3 and Stage 4 work for all affected components. Human confirms
+  scope before return to Stage 2. Added to Execution Protocol step 11.
+
+- **Build/compile verification** added to Stage 4 output schema and validation criteria. Code must
+  compile before guardrail runs. Build FAIL is treated as validation failure (not surfaced to human).
+
+- **Unfakeable test execution artifact** added to Stage 5 output schema and validation criteria.
+  Raw test runner output written to file per component. Artifact must exist, be non-empty, and
+  contain platform-appropriate runner syntax. Claims of test passage without the artifact are
+  rejected — agent re-spawned with instruction to run tests.
+
+- **Pipeline Profiles section** added to SKILL.md with profile table and enterprise stage notes.
+
+- **README rewritten** — reflects current state (all core skills exist), profiles, enterprise
+  stages, key mechanisms, and what is not yet built (ssat, vapt, stability-testing, spec-driver,
+  missing platform skills).
+
+### Changed
+
+- SKILL.md: v1.2.0 → v1.3.0
+- Commissioning updated: profile-conditional, distinguishes consumer vs enterprise exit conditions.
+- Invocation updated: fresh start asks for profile before beginning Stage 1.
+
+---
+
 ## 1.2.0 — 2026-05-16
 
 ### Added

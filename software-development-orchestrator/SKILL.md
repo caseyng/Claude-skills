@@ -1,6 +1,6 @@
 ---
 name: software-development-orchestrator
-version: 1.2.0
+version: 1.3.0
 description: >
   Drives the full software development lifecycle from requirements to commissioning.
   Manages human review gates at each stage, flags missing skills explicitly,
@@ -26,10 +26,27 @@ Two rules that override everything else:
 ## Invocation
 
 **Fresh start:** `/skill:software-development-orchestrator`
-Ask for the human's raw intent. Begin at Stage 1.
+Ask for the human's raw intent. Then ask which pipeline profile applies:
+
+```
+Which pipeline profile applies to this project?
+
+  Consumer   — Stages 1–6 → Commissioning
+               Typical app, web service, or internal tool.
+
+  Enterprise — Stages 1–6 → 7 (SSAT) → 8 (VAPT) → 9 (Stability) → Commissioning
+               Government, finance, healthcare, or any regulated deployment.
+
+  Custom     — Stages 1–6, then you choose which of Stages 7–9 apply.
+               Example: performance-critical consumer app (1–6 → 9 only).
+```
+
+Record the profile in `pipeline-state.md` before beginning Stage 1. The profile is locked
+for the duration of this pipeline run — changing it requires explicit human instruction.
 
 **Resume:** `/skill:software-development-orchestrator resume`
 Ask for the path to the pipeline state document. Load it. Continue from the active stage.
+The profile was recorded at start — do not ask again.
 
 If neither intent nor a state document is provided: ask the human which applies before doing anything else.
 
@@ -68,6 +85,13 @@ For each stage, in order:
     - Record human feedback in the decision log's Gate Decision block
     - If iteration count < cap (3): spawn a new agent per rejected item with prior output + decision log + rejection feedback. Re-validate, then re-present. Previously approved items do not re-run.
     - If iteration count = cap: escalate (see Escalation Protocol below).
+11. On `UPSTREAM_REDESIGN_REQUIRED` deviation (Stage 4 only):
+    - Do not treat this as a Stage 4 rework. This is a cross-stage routing event.
+    - The shared type as designed cannot be implemented on the target platform.
+    - Record the deviation and the evidence in the decision log.
+    - Surface to human: what was attempted, what failed, which shared type is affected, which components use it.
+    - Human confirms return to Stage 2. All Stage 3 and Stage 4 work for affected components is invalidated.
+    - Return to Stage 2 with the deviation evidence as context. Stage 2 must produce a new design for the affected shared type before Stage 3 and 4 can re-run for affected components.
 
 ---
 
@@ -251,14 +275,17 @@ State schemas: `references/pipeline-state.md`
 
 ## Commissioning
 
-Commissioning is a milestone, not a stage. When Stage 6 is complete and the human accepts
-the integration test results:
+Commissioning is a milestone, not a stage. When all stages required by the pipeline profile
+are complete and the human accepts the final stage's results:
 
 ```
 ════════════════════════════════════════════════════
 COMMISSIONED — [Project Name]
 ════════════════════════════════════════════════════
-All six stages complete. Human has accepted delivery.
+Profile:  [Consumer | Enterprise | Custom]
+Stages completed: [list]
+
+Human has accepted delivery.
 
 Gaps encountered during this pipeline:
 [List any skills that were missing, or "None"]
@@ -267,7 +294,37 @@ Pipeline state archived to: pipeline-state.md
 ════════════════════════════════════════════════════
 ```
 
+**Consumer profile:** Commissioning follows Stage 6 approval.
+**Enterprise profile:** Commissioning follows Stage 9 approval. A product that exits at Stage 6
+is a functionally tested implementation — it is not production-grade for regulated environments
+until Stages 7, 8, and 9 are complete.
+**Custom profile:** Commissioning follows the last selected stage's approval.
+
 The pipeline does not continue after commissioning. The state document is the final record.
+
+---
+
+## Pipeline Profiles
+
+The profile determines which stages run and what constitutes commissioning.
+
+| Profile | Stages | Commissioning gate | Typical use |
+|---|---|---|---|
+| Consumer | 1–6 | Stage 6 approved | Apps, web services, internal tools |
+| Enterprise | 1–9 | Stage 9 approved | Government, finance, healthcare, regulated deployments |
+| Custom | 1–6 + selected optional | Last selected stage approved | Performance-critical consumer; security-sensitive but not regulated |
+
+**What Stage 6 delivers:** A functionally tested, integration-verified implementation. It is not production-grade for regulated environments without Stages 7–9.
+
+**Optional stages (Stages 7–9):** Can be selectively combined:
+- 9 only: consumer app with performance contracts that must be verified
+- 7 + 8 only: security review without load testing
+- 7 + 8 + 9: full enterprise path
+
+**Skills for Stages 7–9:** `ssat`, `vapt`, `stability-testing` — all MISSING. When a pipeline
+reaches any of these stages without the corresponding skill, the orchestrator emits a gap notice
+(same as any other missing skill) and stops. Build the skill to continue. The gap notice is the
+specification for what to build.
 
 ---
 
