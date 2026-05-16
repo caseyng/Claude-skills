@@ -50,7 +50,7 @@ Present a summary and reference `output/stage-1-requirements.md`. Human reads th
 
 ## Stage 2 — System Design
 
-**Skill:** `system-design` — MISSING
+**Skill:** `system-design` — EXISTS
 **Parallelism:** Sequential
 
 **Inputs:**
