@@ -184,7 +184,7 @@ Requirements Document.
 **Skills:**
 - `spec-driven-testing`: EXISTS
 - `code-integrity-guardrail` Phase 0 (lint): EXISTS
-- `spec-audit`: MISSING
+- `spec-audit`: EXISTS
 
 **Parallelism:** Parallel per component. Within each component, three sub-tasks run in parallel.
 
@@ -203,7 +203,7 @@ Each component agent runs three sub-tasks in parallel:
 |---|---|---|
 | Lint | `code-integrity-guardrail` Phase 0 | Static analysis, type checking, known anti-patterns |
 | Behavioral testing | `spec-driven-testing` | Tests written from spec shapes only, not implementation. Format assertion requirement applies. |
-| Specification compliance | `spec-audit` — MISSING | Every RFC 2119 MUST contract in the spec confirmed present in implementation |
+| Specification compliance | `spec-audit` | Every RFC 2119 MUST contract in the spec confirmed present in implementation |
 
 **Output schema — Testing Results (per component):**
 
