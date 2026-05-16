@@ -1,6 +1,6 @@
 ---
 name: software-development-orchestrator
-version: 1.0.0
+version: 1.1.0
 description: >
   Drives the full software development lifecycle from requirements to commissioning.
   Manages human review gates at each stage, flags missing skills explicitly,
@@ -45,13 +45,37 @@ For each stage, in order:
    - If MISSING → emit gap notice (see Gap Handling), stop
    - If EXISTS → continue
 4. Execute the stage:
-   - Sequential stage: invoke the skill as a single agent
-   - Parallel stage: prepare one complete context package per component, spawn parallel agents, collect all outputs before presenting the gate
-5. Verify outputs conform to the stage's output schema (defined in `references/pipeline-stages.md`)
-6. Present the human gate review package (see Human Gate Format below)
-7. Record the decision and update the state document
+   - Spawn one agent per unit of work (one for sequential stages, one per component for parallel stages)
+   - Each agent receives a complete context package, writes its output to the defined file path (see `references/pipeline-stages.md`), and terminates
+   - Agents do not communicate with each other — if a package is incomplete, the agent cannot complete its work
+   - For parallel stages: collect all output file paths before proceeding to validation
+5. Validate (before the human sees anything):
+   - Read the validation fields from each output file — not full content
+   - Apply the stage's validation criteria from `references/pipeline-stages.md`
+   - If validation fails: spawn a new agent with the prior output file + the specific failure + correction instructions. Repeat until validation passes. Do not surface failed output to the human.
+6. Present the human gate review package (see Human Gate Format below):
+   - Include a summary of what was produced and that validation passed
+   - Reference the output file paths — the human reads the files directly
+   - Do not reproduce full artifact content in the gate presentation
+7. Record the gate decision and update the state document
 8. On APPROVE: advance to next stage
-9. On REJECT with feedback: rework only the rejected items, re-present. Items the human approved in a prior presentation do not re-run.
+9. On REJECT with feedback: spawn a new agent per rejected item with the prior output file + the specific feedback. Re-validate, then re-present. Items the human approved in a prior presentation do not re-run.
+
+---
+
+## Artifact Model
+
+Agents write to files. The orchestrator stays lean.
+
+**Agent output:** Each agent writes its stage output to the file path defined in `references/pipeline-stages.md`. The agent does not return content inline — it writes the file and reports the path.
+
+**Orchestrator reads:** Validation fields only — never full artifact content. Full content is consumed by the human at the gate, and by downstream agents as part of their context package.
+
+**Context packages:** Each agent receives every file it needs, listed explicitly in the stage definition. Nothing is implicit. If a file is not in the package, the agent does not have it.
+
+**Rework loops:** When a stage is rejected — by validation or by human — a new agent is spawned. That agent receives: the prior output file, the specific rejection reasons, and correction instructions. It does not receive the full reasoning of the prior agent.
+
+**State document:** `pipeline-state.md` records file paths and statuses, not content. It is the orchestrator's complete view of the pipeline. On resume, the orchestrator loads `pipeline-state.md` and continues from the recorded state — no reconstruction needed.
 
 ---
 
@@ -100,9 +124,9 @@ Completed:
 [One or two sentences on what was produced and why it matters.]
 
 ── Artifacts ──────────────────────────────────────
-[The actual deliverables — document content, spec summaries,
-test results, deviation lists. Show enough that the human
-can make an informed decision without opening separate files.]
+[Summary of what was produced — one or two sentences per artifact.
+File references for the human to read directly.
+Do not reproduce full artifact content here — reference the files.]
 
 ── Decision ───────────────────────────────────────
 APPROVE  → I advance to Stage [N+1]: [one sentence on what that stage does]
@@ -122,13 +146,12 @@ On approval I advance automatically. No further input needed until Stage [N+1]'s
 **Unit of parallelism:** one component from Stage 2's approved component list.
 
 For each parallel stage, prepare one self-contained context package per component before spawning agents.
-Each package must include everything the agent needs to complete its work without communicating with
-sibling agents:
+Each package must include everything the agent needs — listed explicitly in the stage definition in
+`references/pipeline-stages.md`. If a file is not in the package, the agent does not have it.
 
-- Full system design document from Stage 2
-- The specific component's definition (name, purpose, boundary, inputs, outputs)
-- The component's specification document (for Stages 4 and 5)
-- The relevant skill document(s) for this stage
+Stage 3 packages include `references/engineering-baseline.md` from this skill. This is not optional.
+The baseline is the orchestrator's enforcement mechanism — it is included in every Stage 3 package
+regardless of whether the component spec references it.
 
 Parallel agents share no state. If a package is incomplete, the agent cannot complete the stage.
 
