@@ -167,10 +167,10 @@ decisions and alternatives rejected, failure mode naming choices, blocking gaps 
 was resolved, non-blocking gaps and why they do not block handoff, provisional FLAGS and
 their resolution, Judge's verdict per cycle with the test applied per gap.
 
-Each agent drives its component to a completed §1-§23 specification using `assisted-epistemology`
-to iterate until zero blocking gaps remain. The engineering baseline defines the floor — anything
-in the baseline does not need to be re-established from scratch in the spec, but the spec must
-be consistent with it.
+Each agent drives its component to a completed §1-§23 specification using `spec-driver`
+(Drafter→Critic→Judge cycle, up to 3 iterations) until zero blocking gaps remain. The engineering
+baseline defines the floor — anything in the baseline does not need to be re-established from
+scratch in the spec, but the spec must be consistent with it.
 
 **Output schema — Component Specification (per component):**
 
